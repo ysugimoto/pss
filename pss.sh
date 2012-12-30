@@ -1,3 +1,3 @@
 #!/bin/bash
 
-php ./lib/boot.php "$@"
+php ./boot.php "$@"

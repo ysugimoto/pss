@@ -98,6 +98,13 @@ class Pss {
 		self::$currentDir = dirname($file);
 		$css              = file_get_contents($file);
 		
+		// to strict format
+		$css = str_replace(
+			array("\r\n", "\r", "\t"),
+			array("\n",   "\n", '  '),
+			$css
+		);
+		
 		// Resolve includes
 		$this->_parseProcessor($css, 'include');
 		$this->_process($css, 'include');

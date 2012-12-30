@@ -1,10 +1,42 @@
 <?php
-
+/**
+ * ====================================================================
+ * 
+ * PSS: PHP-CSS preprocessor 
+ * 
+ * For-loop
+ * 
+ * @package  PSS
+ * @author   Yoshiaki Sugimoto <neo.yoshiaki.sugimoto@gmail.com>
+ * @license  MIT Licence
+ * 
+ * ====================================================================
+ */
+ 
 class Pss_For {
 	
+	/**
+	 * For condition sets
+	 * @var array
+	 */
 	protected static $conditions = array();
+	
+	
+	/**
+	 * Index count
+	 * @var int
+	 */
 	protected static $idx        = 0;
 	
+	
+	/**
+	 * Create control
+	 * 
+	 * @access pubic static
+	 * @param  string $condition
+	 * @param  string $contents
+	 * @return string
+	 */
 	public static function control($condition, $contents) {
 		
 		list($local, $var) = explode(' in ', trim($condition));
@@ -16,10 +48,26 @@ class Pss_For {
 		return '@for ' . $loopName . ';';
 	}
 	
+	
+	// ---------------------------------------------------------------
+	
+	
 	public static function factory() {
 		
 	}
 	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Execute section
+	 * 
+	 * @access public static
+	 * @param  string $name
+	 * @param  string $param
+	 * @return string
+	 */
 	public static function execute($name, $param) {
 		
 		if ( ! isset(self::$conditions[$name]) ) {
@@ -51,6 +99,17 @@ class Pss_For {
 		return implode("\n", $extracted);
 	}
 	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Get from variable size
+	 * 
+	 * @access protected static
+	 * @param  mixed $var
+	 * @return int
+	 */
 	protected static function getSize($var) {
 		
 		switch ( gettype($var) ) {
@@ -72,6 +131,18 @@ class Pss_For {
 		}
 	}
 	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Get variable
+	 * 
+	 * @access protected static
+	 * @param  mixed $var
+	 * @param  int $idx
+	 * @return mixed
+	 */
 	protected static function getVar($var, $idx) {
 		
 		switch ( gettype($var) ) {
@@ -94,7 +165,9 @@ class Pss_For {
 	}
 }
 
-
+/**
+ * For loopset paramters class
+ */
 class ForParams {
 	
 	public $local;

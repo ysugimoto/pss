@@ -61,15 +61,15 @@ class Pss_Selector {
 	 */
 	public function getSelector() {
 		
-		if ( substr($this->selector, 0, 1) === '&' ) {
+		if ( strpos($this->selector, '&') !== FALSE ) {
 			if ( ! $this->parentSelector ) {
 				throw new RuntimeException(
-					'parent selector is not defined!'
+					'parent selector is not defined on '
+					. Pss::getCurrentFile() . ' at ' . (Pss::getCurrentLine() + 1)
 				);
 			}
 			
-			return $this->parentSelector->getSelector()
-			       . substr($this->selector, 1);
+			return str_replace('&', $this->parentSelector->getSelector(), $this->selector);
 		}
 		return ( $this->parentSelector instanceof Pss_Selector )
 		         ? $this->parentSelector->getSelector() . ' ' . $this->selector
@@ -90,7 +90,16 @@ class Pss_Selector {
 		
 		$rule = $this->getSelector() . " {\n";
 		if ( count($this->properties) > 0 ) {
-			$rule .= '  ' . implode(";\n  ", $this->properties) . ';';
+			if ( is_null(Pss::getOption('d')) ) {
+				$unique = array();
+				foreach ( $this->properties as $prop ) {
+					list($key, $value) = explode(':', $prop);
+					$unique[$key] = $prop;
+				}
+			} else {
+				$unique = $this->properties;
+			}
+			$rule .= '  ' . implode(";\n  ", $unique) . ';';
 		}
 		$rule .= "\n}";
 		

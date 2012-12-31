@@ -93,7 +93,10 @@ class Pss_Variable {
 			$o     = new stdClass;
 			foreach ( $exp as $v ) {
 				if ( strpos($v, ':') === FALSE ) {
-					throw new RuntimeException('Parse error: Object-variable is invalid.');
+					throw new RuntimeException(
+						'Parse error: Object-variable is invalid on '
+						. Pss::getCurrentFile() . ' at ' . (Pss::getCurrentLine() + 1)
+					);
 				}
 				$kv = array_map('trim', explode(':', $v));
 				$o->{trim($kv[0], '\'"')} = trim($kv[1], '\'"');

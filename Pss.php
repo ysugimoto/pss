@@ -52,14 +52,14 @@ class Pss {
 	 * Current processing filename
 	 * @var string
 	 */
-	protected $file = '';
+	public $file = '';
 	
 	
 	/**
 	 * Line index
 	 * @var int
 	 */
-	protected $line = 0;
+	public $line = 0;
 	
 	
 	/**
@@ -67,6 +67,13 @@ class Pss {
 	 * @var Pss_Selector
 	 */
 	protected $currentBlock;
+	
+	
+	/**
+	 * Process list
+	 * @var array
+	 */
+	protected static $processes = array();
 	
 	
 	/**
@@ -79,6 +86,70 @@ class Pss {
 	public static function addOption($key, $value) {
 		
 		self::$options[$key] = $value;
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Get passed option
+	 * 
+	 * @access public static
+	 * @param  string $key
+	 * @return mixed
+	 */
+	public static function getOption($key) {
+		
+		return ( isset(self::$options[$key]) ) ? self::$options[$key] : null;
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Get processing line
+	 * 
+	 * @access public static
+	 * @return int
+	 */
+	public static function getCurrentLine() {
+		
+		$proc = end(self::$processes);
+		return $proc->line;
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Get processing file
+	 * 
+	 * @access public static
+	 * @return int
+	 */
+	public static function getCurrentFile() {
+		
+		$proc = end(self::$processes);
+		return $proc->file;
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Set process variable from external
+	 * 
+	 * @access public static
+	 * @param  string $key
+	 * @param  string $value
+	 */
+	public static function addVariable($key, $value) {
+		
+		self::$vars[$key] = new Pss_Variable($value);
 	}
 	
 	
@@ -105,12 +176,41 @@ class Pss {
 		$pss->process($css, $file);
 		
 		$output = '';
+		$d      = is_null(self::getOption('d'));
+		$unique = array();
 		foreach ( self::$selectors as $selector ) {
 			
+			$s = $selector->getSelector();
+			if ( $d && isset($unique[$s]) ) {
+				foreach ( $selector->getProperty() as $props ) {
+					$unique[$s]->addProperty($props);
+				}
+			} else {
+				$unique[$s] = $selector;
+			}
+			
+		}
+		
+		foreach ( $unique as $selector ) { 
 			$output .= $selector->format() . "\n";
 		}
 		
-		return $pss->format($output);
+		$output = $pss->format($output);
+		array_pop(self::$processes);
+		
+		return $output;
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Constructor
+	 */
+	public function __construct() {
+		
+		self::$processes[] = $this;
 	}
 	
 	
@@ -134,6 +234,8 @@ class Pss {
 		
 		$pss = new static();
 		$pss->process($css, '');
+		
+		array_pop(self::$processes);
 	}
 	
 	
@@ -266,8 +368,8 @@ class Pss {
 		
 		if ( ! preg_match('/^@([^\s]+)\s?\(([^\)]+)\)$/', $section, $match) ) {
 			throw new RuntimeException(
-				'Syntax Error: illigal syntaxformat on '
-				. $this->file . ' at ' . $this->line
+				'Syntax Error: illegal syntax format on '
+				. self::getCurrentFile() . ' at ' . (self::getCurrentLine() + 1)
 			);
 		}
 		
@@ -336,7 +438,7 @@ class Pss {
 			if ( ! isset(self::$vars[$match[1]]) ) {
 				throw new RuntimeException(
 					'Undefined variable: $' . $match[1] . ' on '
-					. $this->file . ' at line ' . ($this->line + 1)
+					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
 				);
 			}
 			
@@ -377,7 +479,7 @@ class Pss {
 			if ( ! function_exists($function) ) {
 				throw new RuntimeException(
 					'Called undefined function: ' . $function . ' on '
-					. $this->file . ' at line ' . ($this->line + 1)
+					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
 				);
 			}
 			return str_replace($match[0], call_user_func_array($function, $arguments), $section);
@@ -412,7 +514,17 @@ class Pss {
 		// Arragnge indent
 		$css = preg_replace('/^\s{3,}/m', '  ', $css);
 		
-		return trim($css, "\r\n") . "\n";
+		if ( ! is_null(self::getOption('m')) ) {
+			$css = preg_replace(
+				array('/\n(\s+)?/m', '/:\s/m', '/\s{2}/m'),
+				array('', ':', ' '),
+				$css
+			);
+		} else if ( ! is_null(self::getOption('l')) ) {
+			return preg_replace('/\}\n/m', "}\n\n", $css);
+		}
+		return $css. "\n";
+		
 	}
 	
 	
@@ -443,7 +555,11 @@ $input  = null;
 $output = null;
 
 foreach ( $args as $arg ) {
-	if ( strpos($arg, '-') === 0 ) {
+	if ( strpos($arg, '--') === 0 ) {
+		list($key, $value) = explode('=', trim($arg, '-'));
+		Pss::addVariable($key, $value);
+		continue;
+	} else if ( strpos($arg, '-') === 0 ) {
 		Pss::addOption(substr(trim($arg, '-'), 0, 1), substr(trim($arg, '-'), 1));
 		continue;
 	}
@@ -459,9 +575,16 @@ if ( ! file_exists($input) ) {
 	exit;
 }
 
+try {
+	$compiled = Pss::compile($input);
+} catch ( RuntimeException $e ) {
+	echo $e->getMessage() . PHP_EOL;
+	exit;
+}
+
 if ( ! $output ) {
-	echo Pss::compile($input);
+	echo $compiled; 
 } else {
-	file_put_contents($output, Pss::compile($input));
+	file_put_contents($output, $compiled);
 	echo 'Compilation succeed!' . PHP_EOL;
 }

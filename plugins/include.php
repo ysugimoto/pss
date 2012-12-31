@@ -35,7 +35,12 @@ class Pss_Include extends Pss_Plugin {
 	 */
 	public static function execute($name, $param) {
 		
-		$path = realpath(Pss::$currentDir . '/' . $name);
+		if ( FALSE === ($path = realpath(Pss::$currentDir . '/' . $name)) ) {
+			throw new RuntimeException(
+				'Include file not exists: ' . Pss::$currentDir . '/' . $name . ' on '
+				. Pss::getCurrentFile() . ' at ' . ( Pss::getCurrentLine() + 1)
+			);
+		}
 		return Pss::compile((string)$path);
 	}
 	

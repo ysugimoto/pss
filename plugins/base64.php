@@ -40,11 +40,17 @@ class Pss_Base64 extends Pss_Plugin {
 		
 		$path = realpath(Pss::$currentDir . '/' . trim($param));
 		if ( ! file_exists($path) ) {
-			throw new RuntimeException('Base64 file ' . $param . ' is not found.');
+			throw new RuntimeException(
+				'Base64 file ' . $param . ' is not found on '
+				. Pss::getCurrentFile() . ' at ' . (Pss::getCurrentLine() + 1)
+			);
 		}
 		$ext = pathinfo($path, PATHINFO_EXTENSION);
 		if ( ! $ext ) {
-			throw new RuntimeException('Base64 file cannot detect mimetype.');
+			throw new RuntimeException(
+				'Base64 file cannot detect mimetype on '
+				. Pss::getCurrentFile() . ' at ' . (Pss::getCurrentLine() + 1)
+			);
 		}
 		
 		if ( $ext === 'jpg' ) {

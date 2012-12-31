@@ -105,6 +105,9 @@ class Pss {
 			$css
 		);
 		
+		// Execute PHP internal function
+		$this->_execInternalFunction($css);
+				
 		// Resolve includes
 		$this->_parseProcessor($css, 'include');
 		$this->_process($css, 'include');
@@ -115,6 +118,9 @@ class Pss {
 		
 		// Collection variables ( global scope )
 		$this->_getVariables($css);
+		
+		// Execute inline function
+		$this->_execInlineProcessor($css);
 		
 		// Selectors Factory
 		$this->_correctSelectors($css);
@@ -139,33 +145,8 @@ class Pss {
 			$css = $value->execute($key, $css);
 		}
 		
-		// Calculate Four arithmetic operations
-		$this->_calculateFomura($css);
-		
 		// Return fomatted string
 		return $this->_format($css);
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Calculate Fomura strings
-	 * 
-	 * @access protected
-	 * @param  string $css (reference)
-	 */
-	protected function _calculateFomura(&$css) {
-		
-		if ( ! preg_match_all('/:(.*[+\-\*\/].*)(?:;)/m', $css, $calculates, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $calculates as $calc ) {
-			$fomura = trim(preg_replace('/[pxemdg%]+/', '', $calc[1]));
-			$css    = str_replace($calc[1], ' ' . BNF::calculate($fomura) . 'px', $css);
-		}
 	}
 	
 	
@@ -205,7 +186,7 @@ class Pss {
 	 */
 	protected function _getVariables(&$css) {
 		
-		if ( !  preg_match_all('/(^\$(.+):(?:\s+)?([^;]+);?$)/m', $css, $variables, PREG_SET_ORDER) ) {
+		if ( !  preg_match_all('/(^\$([^:]+):(?:\s+)?([^;]+);?$)/m', $css, $variables, PREG_SET_ORDER) ) {
 			return;
 		}
 		
@@ -302,7 +283,7 @@ class Pss {
 	protected function _process(&$css, $processName = null) {
 		
 		$process = ( $processName ) ? preg_quote($processName) : '[^\s]+';
-		if ( ! preg_match_all('/(@(' . $process . ')\s([^;]+);?$)/m', $css, $processes, PREG_SET_ORDER) ) {
+		if ( ! preg_match_all('/(@(' . $process . ')\s([^;]+);?)/m', $css, $processes, PREG_SET_ORDER) ) {
 			return;
 		}
 		
@@ -317,31 +298,89 @@ class Pss {
 			$css    = str_replace($process[0], $result, $css);
 		}
 	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	protected function _execInlineProcessor(&$css) {
+		
+		if ( ! preg_match_all('/(@([^\s]+)\(([^\)]+)\))/m', $css, $inlines, PREG_SET_ORDER) ) {
+			return;
+		}
+		
+		foreach ( $inlines as $inline ) {
+			
+			$class  = Pss::PREFIX . ucfirst($inline[2]);
+			$result = call_user_func(array($class, 'inline'), trim($inline[3]));
+			$css    = str_replace($inline[0], $result, $css);
+		}
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	protected function _execInternalFunction(&$css) {
+		
+		if ( ! preg_match_all('/(`(.+)`)/ms', $css, $internals, PREG_SET_ORDER) ) {
+			return;
+		}
+		
+		foreach ( $internals as $internal ) {
+			
+			$exp       = explode(' ', $internal[2], 2);
+			$function  = array_shift($exp);
+			$arguments = array_map('trim', $exp);
+			
+			if ( function_exists($function) ) {
+				$css = str_replace($internal[0], call_user_func_array($function, $arguments), $css);
+			}
+		}
+	}
 }
 
 // Plugin declare class
-abstract class  Pss_Plugin {
+class Pss_Plugin {
 	
 	/**
-	 * Abstract method factory
+	 *  Factory
 	 * 
 	 * Factory parameters on parse phase
 	 * @param string $name
 	 * @param string $param
 	 * @param string $css
 	 */
-	abstract static function factory($name, $param, $css);
+	public static function factory($name, $param, $css) {
+		
+		return '';
+	}
 	
 	
 	/**
-	 * Abstract method execute
+	 * Execute section
 	 * 
-	 * Execute processroe on comple phase
+	 * Execute processor on comple phase
 	 * @param  string $name
 	 * @param  string $param
 	 * @return string
 	 */
-	abstract static function execute($name, $param);
+	public static function execute($name, $param) {
+		
+		return '';
+	}
+	
+	/**
+	 * Execute inline
+	 * 
+	 * Execute inline process on comple phase
+	 * @param  string $param
+	 * @return string
+	 */
+	public static function inline($param) {
+		
+		return '';
+	}
 }
 
 // Register autoload plugin classes
@@ -359,6 +398,35 @@ spl_autoload_register(function($name) {
 	} else if ( file_exists(__DIR__ . '/controls/' . $file . '.php') ) {
 		require_once(__DIR__ . '/controls/' . $file . '.php');
 	}
-	
-	
 });
+
+// Main process
+$args   = array_slice($_SERVER['argv'], 1);
+$input  = null;
+$output = null;
+
+foreach ( $args as $arg ) {
+	if ( strpos($arg, '-') === 0 ) {
+		Pss::addOption(substr(trim($arg, '-'), 0, 1), substr(trim($arg, '-'), 1));
+		continue;
+	}
+	if ( ! $input ) {
+		$input = $arg;
+	} else if ( ! $output ) {
+		$output = $arg;
+	}
+}
+
+if ( ! file_exists($input) ) {
+	echo 'Input file: ' . $input . ' is not exists.' . PHP_EOL;
+	exit;
+}
+
+if ( ! $output ) {
+	//Pss::compile($input);
+	echo Pss::compile($input);
+} else {
+	file_put_contents($output, Pss::compile($input));
+	echo 'Compilation succeed!' . PHP_EOL;
+}
+exit;

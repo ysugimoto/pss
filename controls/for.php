@@ -4,7 +4,7 @@
  * 
  * PSS: PHP-CSS preprocessor 
  * 
- * For-loop
+ * For-loop processing
  * 
  * @package  PSS
  * @author   Yoshiaki Sugimoto <neo.yoshiaki.sugimoto@gmail.com>
@@ -13,7 +13,7 @@
  * ====================================================================
  */
  
-class Pss_For {
+class Pss_For extends Pss_Control {
 	
 	/**
 	 * For condition sets
@@ -26,34 +26,19 @@ class Pss_For {
 	 * Index count
 	 * @var int
 	 */
-	protected static $idx        = 0;
+	protected static $idx = 0;
+	
+	
+	// ---------------------------------------------------------------
 	
 	
 	/**
-	 * Create control
-	 * 
-	 * @access pubic static
-	 * @param  string $condition
-	 * @param  string $contents
-	 * @return string
+	 * Constructor
 	 */
-	public static function control($condition, $contents) {
+	public function __construct($condition) {
 		
 		list($local, $var) = explode(' in ', trim($condition));
-		$loopSet  = new ForParams($local, $var, $contents);
-		$loopName = 'loop_' . ++self::$idx;
-		
-		self::$conditions[$loopName] = $loopSet;
-		
-		return '@for ' . $loopName . ';';
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	public static function factory() {
-		
+		$this->loop = new ForParams($local, $var);
 	}
 	
 	
@@ -61,42 +46,29 @@ class Pss_For {
 	
 	
 	/**
-	 * Execute section
+	 * Execute loop
 	 * 
-	 * @access public static
-	 * @param  string $name
-	 * @param  string $param
-	 * @return string
+	 * @access public
 	 */
-	public static function execute($name, $param) {
+	public function execute() {
 		
-		if ( ! isset(self::$conditions[$name]) ) {
-			return '';
-		}
-		
-		$loop = self::$conditions[$name];
-		if ( $loop->var instanceof Pss_Variable ) {
-			$var = $loop->var->getValue();
+		if ( $this->loop->var instanceof Pss_Variable ) {
+			$var = $this->loop->var->getValue();
 		} else {
-			if ( ! isset(Pss::$vars[$loop->var]) ) {
-				throw new RuntimeException('Undefined variable: $' . $loo->var . '!');
+			if ( ! isset(Pss::$vars[$this->loop->var]) ) {
+				throw new RuntimeException('Undefined variable: $' . $this->loo->var . '!');
 			}
-			$var = Pss::$vars[$loop->var]->getValue();
+			$var = Pss::$vars[$this->loop->var]->getValue();
 		}
 		
 		$extracted = array();
-		
-		for ( $i = 0; $i < self::getSize($var); $i += $loop->step ) {
+		for ( $i = 0; $i < $this->getSize($var); $i += $this->loop->step ) {
 			
-			$section = $loop->contents;
-			Pss::$vars[$loop->local] = new Pss_Variable(self::getVar($var, $i));
-			foreach ( Pss::$vars as $name => $value ) {
-				$section = $value->execute($name, $section);
-			}
-			$extracted[] = $section;
-			unset(Pss::$vars[$loop->local]);
+			$section = $this->controlBlock;
+			Pss::$vars[$this->loop->local] = new Pss_Variable($this->getVar($var, $i));
+			Pss::compilePiece($section);
+			unset(Pss::$vars[$this->loop->local]);
 		}
-		return implode("\n", $extracted);
 	}
 	
 	
@@ -106,11 +78,11 @@ class Pss_For {
 	/**
 	 * Get from variable size
 	 * 
-	 * @access protected static
+	 * @access protected
 	 * @param  mixed $var
 	 * @return int
 	 */
-	protected static function getSize($var) {
+	protected function getSize($var) {
 		
 		switch ( gettype($var) ) {
 				
@@ -138,12 +110,12 @@ class Pss_For {
 	/**
 	 * Get variable
 	 * 
-	 * @access protected static
+	 * @access protected
 	 * @param  mixed $var
 	 * @param  int $idx
 	 * @return mixed
 	 */
-	protected static function getVar($var, $idx) {
+	protected function getVar($var, $idx) {
 		
 		switch ( gettype($var) ) {
 				
@@ -172,9 +144,8 @@ class ForParams {
 	
 	public $local;
 	public $var;
-	public $contents;
 	
-	public function __construct($local, $var, $contents) {
+	public function __construct($local, $var) {
 		
 		$this->local = trim($local, '$');
 		
@@ -188,6 +159,5 @@ class ForParams {
 			$this->var = new Pss_Variable(trim($exp[0]));
 		}
 		$this->step     = ( isset($exp[1]) ) ? $exp[1] : 1;
-		$this->contents = $contents;
 	}
 }

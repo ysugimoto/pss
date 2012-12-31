@@ -4,7 +4,7 @@
  * 
  * PSS: PHP-CSS preprocessor 
  * 
- * Main class
+ * Compiler class
  * 
  * @package  PSS
  * @author   Yoshiaki Sugimoto <neo.yoshiaki.sugimoto@gmail.com>
@@ -49,6 +49,27 @@ class Pss {
 	
 	
 	/**
+	 * Current processing filename
+	 * @var string
+	 */
+	protected $file = '';
+	
+	
+	/**
+	 * Line index
+	 * @var int
+	 */
+	protected $line = 0;
+	
+	
+	/**
+	 * Current processing block
+	 * @var Pss_Selector
+	 */
+	protected $currentBlock;
+	
+	
+	/**
 	 * Add command line option
 	 * 
 	 * @access public static
@@ -77,9 +98,42 @@ class Pss {
 			throw new RuntimeException('.pss file is nor exists.');
 		}
 		
-		$pss = new static();
-		return $pss->process($file);
+		self::$currentDir = dirname($file);
+		$css              = file_get_contents($file);
 		
+		$pss = new static();
+		$pss->process($css, $file);
+		
+		$output = '';
+		foreach ( self::$selectors as $selector ) {
+			
+			$output .= $selector->format() . "\n";
+		}
+		
+		return $pss->format($output);
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Compile piece section
+	 * 
+	 * @access public static
+	 * @param  string $css
+	 */
+	public static function compilePiece($css) {
+		
+		// to strict format
+		$css = str_replace(
+			array("\r\n", "\r", "\t"),
+			array("\n",   "\n", '  '),
+			$css
+		);
+		
+		$pss = new static();
+		$pss->process($css, '');
 	}
 	
 	
@@ -93,61 +147,248 @@ class Pss {
 	 * @param  string $file
 	 * @return string
 	 */
-	protected function process($file) {
+	protected function process($css, $file = '') {
 		
-		self::$currentDir = dirname($file);
-		$css              = file_get_contents($file);
+		$this->file = $file;
+		$pointer    = 0;
+		$section    = '';
 		
-		// to strict format
-		$css = str_replace(
-			array("\r\n", "\r", "\t"),
-			array("\n",   "\n", '  '),
-			$css
-		);
-		
-		// Execute PHP internal function
-		$this->_execInternalFunction($css);
-				
-		// Resolve includes
-		$this->_parseProcessor($css, 'include');
-		$this->_process($css, 'include');
-		
-		// Control syntax
-		$this->_controlSyntax($css, 'for');
-		$this->_controlSyntax($css, 'if');
-		
-		// Collection variables ( global scope )
-		$this->_getVariables($css);
-		
-		// Execute inline function
-		$this->_execInlineProcessor($css);
-		
-		// Selectors Factory
-		$this->_correctSelectors($css);
-		
-		// Resolve extends
-		$this->_parseProcessor($css, 'extend');
-		$this->_process($css, 'extend');
-		
-		// Resolve Mixins
-		$this->_parseProcessor($css, 'mixin');
-		$this->_process($css, 'mixin');
-		
-		// Parse other process sections
-		$this->_parseProcessor($css);
-		
-		// Generate CSS
-		$this->_process($css);
-		
-		// Replace variables
-		foreach ( self::$vars as $key => $value ) {
+		for ( $pointer = 0; $pointer < strlen($css); $pointer++) {
 			
-			$css = $value->execute($key, $css);
+			$char = substr($css, $pointer, 1);
+			switch ( $char ) {
+				
+				// Case end of line
+				case ';':
+					if ( $this->currentBlock instanceof Pss_Control ) {
+						if ( preg_match('/^@end(.+);?$/', $section, $syntax) ) {
+							$this->currentBlock->execute();
+							$this->currentBlock = null;
+						} else {
+							$this->currentBlock->addContents($section . $char);
+						}
+					} else {
+						$result = $this->parseGlobalLine(trim($section));
+						if ( $result instanceof Pss_Selector ) {
+							self::$selectors[] = $result;
+						} else if ( is_string($result) && $this->currentBlock instanceof Pss_Selector ) {
+							$this->currentBlock->addProperty($result);
+						}
+					}
+					$section = '';
+					break;
+					
+				// Case start block section ( selector or plugin )
+				case '{':
+					if ( $this->currentBlock instanceof Pss_Control ) {
+						$this->currentBlock->addContents($section . $char);
+					} else {
+						//echo 'section/selector:' . $section . PHP_EOL;
+						$section = trim($section);
+						if ( $section{0} === '@' ) {
+							$this->currentBlock = $this->_factoryProcessor($section);
+						} else if ( $this->currentBlock instanceof Pss_Selector ) {
+							$this->currentBlock = new Pss_Selector($section, $this->currentBlock);
+							self::$selectors[] = $this->currentBlock;
+						} else {
+							$this->currentBlock = new Pss_Selector($section);
+							self::$selectors[] = $this->currentBlock;
+						}
+					}
+					$section = '';
+					break;
+					
+				// Case start Syntax control section ( not property delimiter )
+				case ':':
+					if ( $this->currentBlock instanceof Pss_Control ) {
+						$this->currentBlock->addContents($section . $char);
+						$section = '';
+					} else {
+						if ( substr($css, $pointer + 1, 1) === "\n" && substr($section, 0, 1) === '@' ) {
+							
+							$this->currentBlock = $this->_factoryControlSyntax(trim($section));
+							$section = '';
+						} else {
+							$section .= $char;
+						}
+					}
+					break;
+				
+				// Case end of selector or plugin
+				case '}':
+					if ( $this->currentBlock instanceof Pss_Control ) {
+						$this->currentBlock->addContents($section . $char);
+					} else {
+						//echo 'section/selector end:' . $section . PHP_EOL;
+						if ( $this->currentBlock instanceof Pss_Plugin ) {
+							call_user_func(array($this->currentBlock, 'factory'),
+							               $this->currentBlock->getSelector(),
+							               $this->currentBlock->getParams(),
+							               $this->currentBlock->getProperty()
+							);
+						}
+						if ( $this->currentBlock instanceof Pss_Selector ) {
+							if ( $this->currentBlock->getParent() ) {
+								$this->currentBlock = $this->currentBlock->getParent();
+							} else {
+								$this->currentBlock = null;
+							}
+						}
+					}
+					$section = '';
+					break;
+				
+				// Case end of line
+				case "\n":
+					++$this->line;
+					break;
+					
+				// Case next char
+				default:
+					$section .= $char;
+					break;
+			}
+		}
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Factory control syntax
+	 * 
+	 * @access protected
+	 * @param  string $section
+	 * @return Pss_Control
+	 */
+	protected function _factoryControlSyntax($section) {
+		
+		if ( ! preg_match('/^@([^\s]+)\s?\(([^\)]+)\)$/', $section, $match) ) {
+			throw new RuntimeException(
+				'Syntax Error: illigal syntaxformat on '
+				. $this->file . ' at ' . $this->line
+			);
 		}
 		
-		// Return fomatted string
-		return $this->_format($css);
+		list(, $control, $condition) = $match;
+		$class = self::PREFIX . $control;
+		return new $class(trim($condition));
 	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Facotry processor
+	 * 
+	 * @access protected
+	 * @param  string $section
+	 * @return Pss_Plugin
+	 */
+	protected function _factoryProcessor($section) {
+		
+		if ( ! preg_match('/@([^\s]+)\s(.+)/', $section, $match) ) {
+			return;
+		}
+		
+		list(, $plugin, $name) = $match;
+		$class = Pss::PREFIX . $plugin;
+		// split parameter if exists
+		list($name, $param) = ( preg_match('/(.+)\((.+)\)/', trim($name), $matches) )
+		                        ? array($matches[1], trim($matches[2]))
+		                        : array(trim($name), '');
+		
+		return new $class($name, $param);
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Execute parsing line
+	 * 
+	 * @access public
+	 * @param  string $section
+	 * @return mixed
+	 */
+	public function parseGlobalLine($section) {
+		
+		// Variable definition format like: "$variable: some-data" 
+		if ( preg_match('/^\$([^:]+):\s?(.+)$/', $section, $match) ) {
+			$value = $this->parseGlobalLine(trim($match[2], '"\''));
+			self::$vars[trim($match[1])] = new Pss_Variable($value);
+			return;
+		}
+		
+		// ------------------------------------------
+		
+		// Use variable data format like: "width: $width"
+		else if ( preg_match('/\$([^\s]+)/', $section, $match) ) {
+			
+			// If parsing section is plugin's inner,
+			// parse variable lazy
+			if ( $this->currentBlock instanceof Pss_Plugin ) {
+				return $section;
+			}
+			if ( ! isset(self::$vars[$match[1]]) ) {
+				throw new RuntimeException(
+					'Undefined variable: $' . $match[1] . ' on '
+					. $this->file . ' at line ' . ($this->line + 1)
+				);
+			}
+			
+			return str_replace($match[0], self::$vars[$match[1]]->getValue(), $section);
+		}
+		
+		// ------------------------------------------
+		
+		// Execute plugin format like: "@mixin sample(10px)"
+		else if ( preg_match('/@([^\s\(]+)\s(.+)/', $section, $match) ) {
+			list(, $plugin, $name) = $match;
+			$class  = Pss::PREFIX . ucfirst($plugin);
+			$params = ( preg_match('/(.+)\((.+)\)/', $name, $matches) )
+			            ? array($matches[1], Pss_Plugin::parseExecArguments(trim($matches[2])))
+			            : array(trim($name), array());
+			
+			return call_user_func_array(array($class, 'execute'), $params);
+		}
+		
+		// ------------------------------------------
+		
+		// Execute inline plugin format like: "@base64(./image.png)"
+		else if ( preg_match('/@([^\(]+)\(([^\)]+)\)/', $section, $match) ) {
+			$class  = Pss::PREFIX . ucfirst($match[1]);
+			$result = call_user_func(array($class, 'inline'), trim($match[2]));
+			
+			return str_replace($match[0], $result, $section);
+		}
+		
+		// ------------------------------------------
+		
+		// Execute internal PHP function format like: "`time`"
+		else if ( preg_match('/`(.+)`/', $section, $match) ) {
+			$exp       = explode(' ', $match[1], 2);
+			$function  = array_shift($exp);
+			$arguments = array_map('trim', $exp);
+			
+			if ( ! function_exists($function) ) {
+				throw new RuntimeException(
+					'Called undefined function: ' . $function . ' on '
+					. $this->file . ' at line ' . ($this->line + 1)
+				);
+			}
+			return str_replace($match[0], call_user_func_array($function, $arguments), $section);
+		}
+		
+		// ------------------------------------------
+		
+		// Else, returns argument value.
+		return $section;
+	}
+	
 	
 	
 	// ---------------------------------------------------------------
@@ -160,7 +401,7 @@ class Pss {
 	 * @param  string $css
 	 * @return string
 	 */
-	protected function _format($css) {
+	public function format($css) {
 		
 		// Remove empty line
 		$css = preg_replace('/^\n/m', '', $css);
@@ -175,212 +416,7 @@ class Pss {
 	}
 	
 	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Get PSS variables
-	 * 
-	 * @access protected
-	 * @param  string $css (reference)
-	 */
-	protected function _getVariables(&$css) {
-		
-		if ( !  preg_match_all('/(^\$([^:]+):(?:\s+)?([^;]+);?$)/m', $css, $variables, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $variables as $variable ) {
-			
-			self::$vars[trim($variable[2])] = new Pss_Variable(trim($variable[3], '"\''));
-			// remove line
-			$css = str_replace($variable[0], '', $css);
-		}
-	}
-	
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Detect and factory processor
-	 * 
-	 * @access protected
-	 * @param  string $css (reference)
-	 * @param  string $processName;
-	 */
-	protected function _parseProcessor(&$css, $processName = null) {
-		
-		$process = ( $processName ) ? preg_quote($processName) : '[^\s]+';
-		if ( ! preg_match_all('/(([^;]@(' . $process . ')\s([^\{;]+)\{([^\}]+)\}$))/m', $css, $processors, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $processors as $processor ) {
-			
-			$class = Pss::PREFIX . ucfirst($processor[3]);
-			// split parameter if exists
-			$params = ( preg_match('/(.+)\((.+)\)/', $processor[4], $matches) )
-			            ? array($matches[1], trim($matches[2]), trim(trim($processor[5], "\r\n")))
-			            : array(trim($processor[4]), '', trim(trim($processor[5], "\r\n")));
-			
-			call_user_func_array(array($class, 'factory'), $params);
-			$css = str_replace($processor[0], '', $css);
-		}
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Correct selectors
-	 * 
-	 * @access protected
-	 * @param  string $css (reference)
-	 */
-	protected function _correctSelectors(&$css) {
-		
-		if ( ! preg_match_all('/((^[^@\s\n}]+)\s?\{([^\}]+)\}$)/m', $css, $selectors, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $selectors as $selector ) {
-			
-			self::$selectors[$selector[2]] = ltrim($selector[3], "\n");
-		}
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	protected function _controlSyntax(&$css, $syntax) {
-		
-		$reg = preg_quote($syntax);
-		if ( ! preg_match_all('/(^@' . $reg . '\s\((.+?)\):?(.+?)^@end' . $reg . ';?$)/sm', $css, $controls, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $controls as $control ) {
-			
-			$result = call_user_func(array(self::PREFIX . $syntax, 'control'), $control[2], $control[3]);
-			$css    = str_replace($control[0], $result, $css);
-		}
-	}
-	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Process compile
-	 * 
-	 * @access protected
-	 * @param  string $css (reference)
-	 * @param  string $processName;
-	 */
-	protected function _process(&$css, $processName = null) {
-		
-		$process = ( $processName ) ? preg_quote($processName) : '[^\s]+';
-		if ( ! preg_match_all('/(@(' . $process . ')\s([^;]+);?)/m', $css, $processes, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $processes as $process ) {
-			
-			$class  = Pss::PREFIX . ucfirst($process[2]);
-			$params = ( preg_match('/(.+)\((.+)\)/', $process[3], $matches) )
-			            ? array($matches[1], trim($matches[2]))
-			            : array(trim($process[3]), '');
-			
-			$result = call_user_func_array(array($class, 'execute'), $params);
-			$css    = str_replace($process[0], $result, $css);
-		}
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	protected function _execInlineProcessor(&$css) {
-		
-		if ( ! preg_match_all('/(@([^\s]+)\(([^\)]+)\))/m', $css, $inlines, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $inlines as $inline ) {
-			
-			$class  = Pss::PREFIX . ucfirst($inline[2]);
-			$result = call_user_func(array($class, 'inline'), trim($inline[3]));
-			$css    = str_replace($inline[0], $result, $css);
-		}
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	protected function _execInternalFunction(&$css) {
-		
-		if ( ! preg_match_all('/(`(.+)`)/ms', $css, $internals, PREG_SET_ORDER) ) {
-			return;
-		}
-		
-		foreach ( $internals as $internal ) {
-			
-			$exp       = explode(' ', $internal[2], 2);
-			$function  = array_shift($exp);
-			$arguments = array_map('trim', $exp);
-			
-			if ( function_exists($function) ) {
-				$css = str_replace($internal[0], call_user_func_array($function, $arguments), $css);
-			}
-		}
-	}
-}
 
-// Plugin declare class
-class Pss_Plugin {
-	
-	/**
-	 *  Factory
-	 * 
-	 * Factory parameters on parse phase
-	 * @param string $name
-	 * @param string $param
-	 * @param string $css
-	 */
-	public static function factory($name, $param, $css) {
-		
-		return '';
-	}
-	
-	
-	/**
-	 * Execute section
-	 * 
-	 * Execute processor on comple phase
-	 * @param  string $name
-	 * @param  string $param
-	 * @return string
-	 */
-	public static function execute($name, $param) {
-		
-		return '';
-	}
-	
-	/**
-	 * Execute inline
-	 * 
-	 * Execute inline process on comple phase
-	 * @param  string $param
-	 * @return string
-	 */
-	public static function inline($param) {
-		
-		return '';
-	}
 }
 
 // Register autoload plugin classes
@@ -399,6 +435,7 @@ spl_autoload_register(function($name) {
 		require_once(__DIR__ . '/controls/' . $file . '.php');
 	}
 });
+
 
 // Main process
 $args   = array_slice($_SERVER['argv'], 1);
@@ -423,10 +460,8 @@ if ( ! file_exists($input) ) {
 }
 
 if ( ! $output ) {
-	//Pss::compile($input);
 	echo Pss::compile($input);
 } else {
 	file_put_contents($output, Pss::compile($input));
 	echo 'Compilation succeed!' . PHP_EOL;
 }
-exit;

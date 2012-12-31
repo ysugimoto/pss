@@ -36,8 +36,7 @@ class Pss_Mixin extends Pss_Plugin {
 	 */
 	public static function factory($name, $param, $css) {
 		
-		$args = self::parseArgs($param);
-		self::$mixins[$name] = array($args, $css);
+		self::$mixins[$name] = array($param, $css);
 	}
 	
 	
@@ -61,16 +60,18 @@ class Pss_Mixin extends Pss_Plugin {
 		
 		list($args, $css) = self::$mixins[$name];
 		$params = ( ! empty($param) )
-		            ? array_filter(explode(',', $param))
+		            ? array_filter($param)
 		            : array();
 		
 		foreach ( $args as $index => $arg ) {
 			
 			$value = ( isset($params[$index]) ) ? $params[$index] : $arg->value;
-			$css   = str_replace($arg->name, $value, $css);
+			foreach ( $css as $index => $prop ) {
+				$css[$index] = str_replace($arg->name, $value, $prop);
+			}
 		}
 		
-		return $css;
+		return implode(";\n  ", $css);
 	}
 	
 	
@@ -101,33 +102,5 @@ class Pss_Mixin extends Pss_Plugin {
 		}
 		
 		return $args;
-	}
-}
-
-/**
- * Mixin parameter key-value object class
- */
-class MixinParams {
-	
-	/**
-	 * Parameter name
-	 * @var string
-	 */
-	public $name;
-	
-	/**
-	 * Parameter value
-	 * @var string
-	 */
-	public $value;
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	public function __construct($name, $default) {
-		
-		$this->name  = trim($name);
-		$this->value = trim($default, '"\'');
 	}
 }

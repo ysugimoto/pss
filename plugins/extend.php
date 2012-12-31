@@ -15,25 +15,7 @@
  */
 
 class Pss_Extend extends Pss_Plugin {
-	
-	/**
-	 * Processor factory
-	 * 
-	 * @access public static
-	 * @param  string $name
-	 * @param  string $param
-	 * @param  string $css
-	 */
-	public static function factory($name, $param, $css) {
 		
-		// Nothing to do!
-		
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
 	/**
 	 * Processor execute
 	 * 
@@ -44,6 +26,14 @@ class Pss_Extend extends Pss_Plugin {
 	 */
 	public static function execute($name, $param) {
 		
-		return ( isset(Pss::$selectors[$name]) ) ? Pss::$selectors[$name] : "\n";
+		$properties = array();
+		foreach ( Pss::$selectors as $selector) {
+			
+			if ( $selector->getSelector() === $name ) {
+				$properties = $selector->getProperty();
+			}
+		}
+		
+		return ( count($properties) > 0 ) ? implode(";\n  ", $properties) . "\n" : "";
 	}
 }

@@ -1,8 +1,41 @@
 <?php
-
+/**
+ * ====================================================================
+ * 
+ * PSS: PHP-CSS preprocessor 
+ * 
+ * Enable to use base64-encode string
+ * 
+ * @package  PSS
+ * @author   Yoshiaki Sugimoto <neo.yoshiaki.sugimoto@gmail.com>
+ * @license  MIT Licence
+ * 
+ * @usage
+ * Call inline with encode data taht you want like this:
+ * 
+ * .selector {
+ *   backround-image: url(@base64(./encode.png));
+ * }
+ * 
+ * output is:
+ * 
+ * .selector {
+ *   background-image: url(data:image/png;base64,[encodeed string...]);
+ * }
+ * 
+ * ====================================================================
+ */
 
 class Pss_Base64 extends Pss_Plugin {
 	
+	
+	/**
+	 * Callable inline
+	 * 
+	 * @access public static
+	 * @param  string $param
+	 * @return string
+	 */
 	public static function inline($param) {
 		
 		$path = realpath(Pss::$currentDir . '/' . trim($param));

@@ -47,6 +47,8 @@ class Pss {
 	 */
 	public static $options = array();
 	
+	public static $originalSize = 0;
+	
 	
 	/**
 	 * Current processing filename
@@ -251,6 +253,8 @@ class Pss {
 	 */
 	protected function process($css, $file = '') {
 		
+		self::$originalSize += strlen($css);
+		
 		$this->file = $file;
 		$pointer    = 0;
 		$section    = '';
@@ -297,7 +301,8 @@ class Pss {
 								$this->currentBlock = new Pss_Selector($section);
 								self::$selectors[] = $this->currentBlock;
 							}
-						} else if ( $this->currentBlock instanceof Pss_Selector ) {
+						} else if ( $this->currentBlock instanceof Pss_Selector 
+						            && ! ($this->currentBlock instanceof Pss_Plugin) ) {
 							$this->currentBlock = new Pss_Selector($section, $this->currentBlock);
 							self::$selectors[] = $this->currentBlock;
 						} else {
@@ -605,4 +610,10 @@ if ( ! $output ) {
 } else {
 	file_put_contents($output, $compiled);
 	echo 'Compilation succeed!' . PHP_EOL;
+}
+if ( ! is_null(Pss::getOption('v')) ) {
+	echo '========================================' . PHP_EOL;
+	echo 'Compiled from: ' . $input . (( $output ) ? ' to ' . $output : '') . PHP_EOL;
+	echo 'Compiled size: : ' . strlen($compiled) . 'byte' . PHP_EOL;
+	echo '========================================' . PHP_EOL;
 }

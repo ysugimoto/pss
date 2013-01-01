@@ -285,9 +285,6 @@ class Pss {
 					
 				// Case start block section ( selector or plugin )
 				case '{':
-					if ( $commented ) {
-						break;
-					}
 					if ( $this->currentBlock instanceof Pss_Control ) {
 						$this->currentBlock->addContents($section . $char);
 					} else {

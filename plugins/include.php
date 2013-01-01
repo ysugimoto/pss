@@ -37,7 +37,7 @@ class Pss_Include extends Pss_Plugin {
 		
 		if ( FALSE === ($path = realpath(Pss::$currentDir . '/' . $name)) ) {
 			throw new RuntimeException(
-				'Include file not exists: ' . Pss::$currentDir . '/' . $name . ' on '
+				'Include file not exists: ' . $name . ' on '
 				. Pss::getCurrentFile() . ' at ' . ( Pss::getCurrentLine() + 1)
 			);
 		}

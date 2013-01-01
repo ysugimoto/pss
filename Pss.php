@@ -255,6 +255,9 @@ class Pss {
 		$pointer    = 0;
 		$section    = '';
 		
+		// Split comment
+		$css = preg_replace('/\/\*.+?\*\//ms', '', $css);
+		
 		for ( $pointer = 0; $pointer < strlen($css); $pointer++) {
 			
 			$char = substr($css, $pointer, 1);
@@ -282,6 +285,9 @@ class Pss {
 					
 				// Case start block section ( selector or plugin )
 				case '{':
+					if ( $commented ) {
+						break;
+					}
 					if ( $this->currentBlock instanceof Pss_Control ) {
 						$this->currentBlock->addContents($section . $char);
 					} else {
@@ -339,7 +345,7 @@ class Pss {
 					}
 					$section = '';
 					break;
-				
+
 				// Case end of line
 				case "\n":
 					++$this->line;
@@ -369,7 +375,7 @@ class Pss {
 		if ( ! preg_match('/^@([^\s]+)\s?\(([^\)]+)\)$/', $section, $match) ) {
 			throw new RuntimeException(
 				'Syntax Error: illegal syntax format on '
-				. self::getCurrentFile() . ' at ' . (self::getCurrentLine() + 1)
+				. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
 			);
 		}
 		

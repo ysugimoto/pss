@@ -444,7 +444,7 @@ class Pss {
 		// ------------------------------------------
 		
 		// Use variable data format like: "width: $width"
-		else if ( preg_match('/\$([^\s]+)/', $section, $match) ) {
+		else if ( preg_match('/<?\$([^\s>]+)>?/', $section, $match) ) {
 			
 			// If parsing section is plugin's inner,
 			// parse variable lazy

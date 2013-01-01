@@ -92,7 +92,7 @@ class Pss_Selector {
 		if ( count($this->properties) > 0 ) {
 			if ( is_null(Pss::getOption('d')) ) {
 				$unique = array();
-				foreach ( $this->properties as $prop ) {
+				foreach ( array_filter($this->properties) as $prop ) {
 					list($key, $value) = explode(':', $prop);
 					$unique[$key] = $prop;
 				}

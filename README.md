@@ -17,13 +17,27 @@ Sassなどのmixin/extendなどの基本的な構文をサポートしていま�
 付属のシェルスクリプトから実行できます。
 
 ```pss.sh
-./pss.sh input_file [output_file] [-mdl]
+./pss.sh input_file [output_file] [-mdl] [--extraargs]
 ```
 
 ### コマンド引数
 
 * input_file : **必須**コンパイル対象の入力ファイルです。
 * output_file : 出力ファイル。指定がなければ結果は標準出力です。
+
+その他、--key=value などの追加オプションを渡すことで、プロセス中で変数として利用することもできます。
+
+```
+./pss.sh input_file --PATH=/path/to
+
+/* pssファイル内で$PATHという変数が利用可能になる */
+.selector {
+  background-image: url($PATH);
+}
+```
+
+環境のスイッチに便利ですが、コマンド変数に依存している場合、引数を渡さないとコンパイルエラーになるので注意が必要です。
+
 
 ### コマンドオプション
 

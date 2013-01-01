@@ -1,4 +1,5 @@
 <?php
+define('PSS_START_TIME', microtime());
 /**
  * ====================================================================
  * 
@@ -628,9 +629,16 @@ if ( ! $output ) {
 	echo 'Compilation succeed!' . PHP_EOL;
 }
 if ( ! is_null(Pss::getOption('v')) ) {
-	echo '========================================' . PHP_EOL;
+	echo '/* ========================================' . PHP_EOL;
 	echo 'Compiled from: ' . $input . (( $output ) ? ' to ' . $output : '') . PHP_EOL;
-	echo 'Compiled size: ' . strlen($compiled) . 'byte' . PHP_EOL;
-	echo 'Defined Selectors count: ' . Pss::$selectorCount . PHP_EOL;
-	echo '========================================' . PHP_EOL;
+	echo 'Compiled size: ' . number_format(strlen($compiled)) . '(byte)' . PHP_EOL;
+	echo 'Defined Selectors count: ' . number_format(Pss::$selectorCount) . PHP_EOL;
+	echo PHP_EOL;
+	echo 'System memory: ' . number_format(memory_get_usage()) . '(byte) used' . PHP_EOL;
+		
+	list($stm, $sts) = explode(' ', PSS_START_TIME);
+	list($edm, $eds) = explode(' ', microtime());
+		
+	echo 'Process time: ' . number_format(($edm + $eds) - ($stm + $sts), 4) . '(msec)' . PHP_EOL;
+	echo '======================================== */' . PHP_EOL;
 }

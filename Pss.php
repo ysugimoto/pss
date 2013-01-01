@@ -47,7 +47,19 @@ class Pss {
 	 */
 	public static $options = array();
 	
-	public static $originalSize = 0;
+	
+	/**
+	 * System info: src file size
+	 * @var int
+	 */
+	public static $originalSize  = 0;
+	
+	
+	/**
+	 * System info: output selectors count
+	 * @var int
+	 */
+	public static $selectorCount = 0;
 	
 	
 	/**
@@ -183,17 +195,21 @@ class Pss {
 		foreach ( self::$selectors as $selector ) {
 			
 			$s = $selector->getSelector();
-			if ( $d && isset($unique[$s]) ) {
-				foreach ( $selector->getProperty() as $props ) {
-					$unique[$s]->addProperty($props);
-				}
+			if ( ! $d ) {
+				$unique[] = $selector;
 			} else {
-				$unique[$s] = $selector;
+				if ( isset($unique[$s]) ) {
+					foreach ( $selector->getProperty() as $props ) {
+						$unique[$s]->addProperty($props);
+					}
+				} else {
+					$unique[$s] = $selector;
+				}
 			}
-			
 		}
 		
-		foreach ( $unique as $selector ) { 
+		foreach ( $unique as $selector ) {
+			self::$selectorCount++;
 			$output .= $selector->format() . "\n";
 		}
 		
@@ -614,6 +630,7 @@ if ( ! $output ) {
 if ( ! is_null(Pss::getOption('v')) ) {
 	echo '========================================' . PHP_EOL;
 	echo 'Compiled from: ' . $input . (( $output ) ? ' to ' . $output : '') . PHP_EOL;
-	echo 'Compiled size: : ' . strlen($compiled) . 'byte' . PHP_EOL;
+	echo 'Compiled size: ' . strlen($compiled) . 'byte' . PHP_EOL;
+	echo 'Defined Selectors count: ' . Pss::$selectorCount . PHP_EOL;
 	echo '========================================' . PHP_EOL;
 }

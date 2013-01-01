@@ -291,7 +291,12 @@ class Pss {
 						//echo 'section/selector:' . $section . PHP_EOL;
 						$section = trim($section);
 						if ( $section{0} === '@' ) {
-							$this->currentBlock = $this->_factoryProcessor($section);
+							if ( FALSE !== ($proc = $this->_factoryProcessor($section)) ) {
+								$this->currentBlock = $proc;
+							} else {
+								$this->currentBlock = new Pss_Selector($section);
+								self::$selectors[] = $this->currentBlock;
+							}
 						} else if ( $this->currentBlock instanceof Pss_Selector ) {
 							$this->currentBlock = new Pss_Selector($section, $this->currentBlock);
 							self::$selectors[] = $this->currentBlock;
@@ -332,7 +337,7 @@ class Pss {
 							               $this->currentBlock->getProperty()
 							);
 						}
-						if ( $this->currentBlock instanceof Pss_Selector ) {
+						else if ( $this->currentBlock instanceof Pss_Selector ) {
 							if ( $this->currentBlock->getParent() ) {
 								$this->currentBlock = $this->currentBlock->getParent();
 							} else {
@@ -394,18 +399,26 @@ class Pss {
 	 */
 	protected function _factoryProcessor($section) {
 		
-		if ( ! preg_match('/@([^\s]+)\s(.+)/', $section, $match) ) {
+		if ( ! preg_match('/@([^\s]+)\s?(.+)?/', $section, $match) ) {
 			return;
+		}
+		
+		if ( ! isset($match[2]) ) {
+			$match[2] = '';
 		}
 		
 		list(, $plugin, $name) = $match;
 		$class = Pss::PREFIX . $plugin;
-		// split parameter if exists
-		list($name, $param) = ( preg_match('/(.+)\((.+)\)/', trim($name), $matches) )
-		                        ? array($matches[1], trim($matches[2]))
-		                        : array(trim($name), '');
-		
-		return new $class($name, $param);
+		if ( class_exists($class) ) {
+			// split parameter if exists
+			list($name, $param) = ( preg_match('/(.+)\((.+)\)/', trim($name), $matches) )
+			                        ? array($matches[1], trim($matches[2]))
+			                        : array(trim($name), '');
+			
+			return new $class($name, $param);
+		} else {
+			return FALSE;
+		}
 	}
 	
 	
@@ -454,11 +467,13 @@ class Pss {
 		else if ( preg_match('/@([^\s\(]+)\s(.+)/', $section, $match) ) {
 			list(, $plugin, $name) = $match;
 			$class  = Pss::PREFIX . ucfirst($plugin);
-			$params = ( preg_match('/(.+)\((.+)\)/', $name, $matches) )
-			            ? array($matches[1], Pss_Plugin::parseExecArguments(trim($matches[2])))
-			            : array(trim($name), array());
-			
-			return call_user_func_array(array($class, 'execute'), $params);
+			if ( class_exists($class) ) {
+				$params = ( preg_match('/(.+)\((.+)\)/', $name, $matches) )
+				            ? array($matches[1], Pss_Plugin::parseExecArguments(trim($matches[2])))
+				            : array(trim($name), array());
+				
+				return call_user_func_array(array($class, 'execute'), $params);
+			}
 		}
 		
 		// ------------------------------------------

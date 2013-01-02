@@ -14,11 +14,13 @@ Sassなどのmixin/extendなどの基本的な構文をサポートしていま�
 
 ## コンパイル
 
-付属のシェルスクリプトから実行できます。
+付属のコマンドスクリプトから実行できます。（/usr/bin/envが利用できる環境が必要です）
 
-```pss.sh
-./pss.sh input_file [output_file] [-mdliv] [--extraargs]
 ```
+./bin/pss input_file [output_file] [-mdlv] [--extraargs]
+```
+
+/usr/bin/envがない場合は、pssスクリプトファイルのhashbangをphpコマンドのパスに書き換えて利用して下さい。
 
 ### コマンド引数
 

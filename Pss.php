@@ -1,5 +1,4 @@
 <?php
-define('PSS_START_TIME', microtime());
 /**
  * ====================================================================
  * 
@@ -15,11 +14,6 @@ define('PSS_START_TIME', microtime());
  */
 
 class Pss {
-	
-	/**
-	 * Prefix constant
-	 */
-	const PREFIX = 'Pss_';
 	
 	/**
 	 * Process variables
@@ -404,7 +398,7 @@ class Pss {
 		}
 		
 		list(, $control, $condition) = $match;
-		$class = self::PREFIX . $control;
+		$class = PSS_CLASS_PREFIX . $control;
 		return new $class(trim($condition));
 	}
 	
@@ -430,7 +424,7 @@ class Pss {
 		}
 		
 		list(, $plugin, $name) = $match;
-		$class = Pss::PREFIX . $plugin;
+		$class = PSS_CLASS_PREFIX . $plugin;
 		if ( class_exists($class) ) {
 			// split parameter if exists
 			list($name, $param) = ( preg_match('/(.+)\((.+)\)/', trim($name), $matches) )
@@ -459,6 +453,14 @@ class Pss {
 		// Variable definition format like: "$variable: some-data" 
 		if ( preg_match('/^\$([^:]+):\s?(.+)$/', $section, $match) ) {
 			$value = $this->parseGlobalLine(trim($match[2], '"\''));
+			
+			// Variable word validation
+			if ( ! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]+$/', trim($match[1])) ) {
+				throw new RuntimeException(
+					'Invalid variable format: "' . trim($match[1]) . '" on '
+					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+				);
+			}
 			self::$vars[trim($match[1])] = new Pss_Variable($value);
 			return;
 		}
@@ -488,7 +490,7 @@ class Pss {
 		// Execute plugin format like: "@mixin sample(10px)"
 		else if ( preg_match('/@([^\s\(]+)\s(.+)/', $section, $match) ) {
 			list(, $plugin, $name) = $match;
-			$class  = Pss::PREFIX . ucfirst($plugin);
+			$class  = PSS_CLASS_PREFIX . ucfirst($plugin);
 			if ( class_exists($class) ) {
 				$params = ( preg_match('/(.+)\((.+)\)/', $name, $matches) )
 				            ? array($matches[1], Pss_Plugin::parseExecArguments(trim($matches[2])))
@@ -502,7 +504,7 @@ class Pss {
 		
 		// Execute inline plugin format like: "@base64(./image.png)"
 		else if ( preg_match('/@([^\(]+)\(([^\)]+)\)/', $section, $match) ) {
-			$class  = Pss::PREFIX . ucfirst($match[1]);
+			$class  = PSS_CLASS_PREFIX . ucfirst($match[1]);
 			$result = call_user_func(array($class, 'inline'), trim($match[2]));
 			
 			return str_replace($match[0], $result, $section);
@@ -566,79 +568,5 @@ class Pss {
 		return $css. "\n";
 		
 	}
-	
-	
-
 }
 
-// Register autoload plugin classes
-spl_autoload_register(function($name) {
-	
-	$file = strtolower(str_replace(Pss::PREFIX, '', $name));
-	
-	if ( file_exists(__DIR__ . '/' . $file . '.php') ) {
-		require_once(__DIR__ . '/' . $file . '.php');
-		return;
-	}
-	
-	if ( file_exists(__DIR__ . '/plugins/' . $file . '.php') ) {
-		require_once(__DIR__ . '/plugins/' . $file . '.php');
-	} else if ( file_exists(__DIR__ . '/controls/' . $file . '.php') ) {
-		require_once(__DIR__ . '/controls/' . $file . '.php');
-	}
-});
-
-
-// Main process
-$args   = array_slice($_SERVER['argv'], 1);
-$input  = null;
-$output = null;
-
-foreach ( $args as $arg ) {
-	if ( strpos($arg, '--') === 0 ) {
-		list($key, $value) = explode('=', trim($arg, '-'));
-		Pss::addVariable($key, $value);
-		continue;
-	} else if ( strpos($arg, '-') === 0 ) {
-		Pss::addOption(substr(trim($arg, '-'), 0, 1), substr(trim($arg, '-'), 1));
-		continue;
-	}
-	if ( ! $input ) {
-		$input = $arg;
-	} else if ( ! $output ) {
-		$output = $arg;
-	}
-}
-
-if ( ! file_exists($input) ) {
-	echo 'Input file: ' . $input . ' is not exists.' . PHP_EOL;
-	exit;
-}
-
-try {
-	$compiled = Pss::compile($input);
-} catch ( RuntimeException $e ) {
-	echo $e->getMessage() . PHP_EOL;
-	exit;
-}
-
-if ( ! $output ) {
-	echo $compiled; 
-} else {
-	file_put_contents($output, $compiled);
-	echo 'Compilation succeed!' . PHP_EOL;
-}
-if ( ! is_null(Pss::getOption('v')) ) {
-	echo '/* ========================================' . PHP_EOL;
-	echo 'Compiled from: ' . $input . (( $output ) ? ' to ' . $output : '') . PHP_EOL;
-	echo 'Compiled size: ' . number_format(strlen($compiled)) . '(byte)' . PHP_EOL;
-	echo 'Defined Selectors count: ' . number_format(Pss::$selectorCount) . PHP_EOL;
-	echo PHP_EOL;
-	echo 'System memory: ' . number_format(memory_get_usage()) . '(byte) used' . PHP_EOL;
-		
-	list($stm, $sts) = explode(' ', PSS_START_TIME);
-	list($edm, $eds) = explode(' ', microtime());
-		
-	echo 'Process time: ' . number_format(($edm + $eds) - ($stm + $sts), 4) . '(msec)' . PHP_EOL;
-	echo '======================================== */' . PHP_EOL;
-}

@@ -31,7 +31,7 @@ Sassなどのmixin/extendなどの基本的な構文をサポートしていま�
 その他、--key=value などの追加オプションを渡すことで、プロセス中で変数として利用することもできます。
 
 ```
-./pss.sh input_file --PATH=/path/to
+./bin/pss input_file --PATH=/path/to
 
 /* pssファイル内で$PATHという変数が利用可能になる */
 .selector {

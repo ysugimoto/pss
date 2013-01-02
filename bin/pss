@@ -10,13 +10,13 @@ define('PSS_VERSION', '0.8');
 spl_autoload_register(function($name) {
 	
 	$file = strtolower(str_replace(PSS_CLASS_PREFIX, '', $name));
+	$file = str_replace('_', '/', $file);
 	
 	if ( file_exists(PSS_DIR . '/' . $file . '.php') ) {
 		require_once(PSS_DIR . '/' . $file . '.php');
-		return;
-	}
-	
-	if ( file_exists(PSS_DIR . '/plugins/' . $file . '.php') ) {
+	} else if ( file_exists(PSS_DIR . '/base/' . $file . '.php') ) {
+		require_once(PSS_DIR . '/base/' . $file . '.php');
+	} else if ( file_exists(PSS_DIR . '/plugins/' . $file . '.php') ) {
 		require_once(PSS_DIR . '/plugins/' . $file . '.php');
 	} else if ( file_exists(PSS_DIR . '/controls/' . $file . '.php') ) {
 		require_once(PSS_DIR . '/controls/' . $file . '.php');
@@ -35,7 +35,10 @@ foreach ( $args as $arg ) {
 		Pss::addVariable($key, $value);
 		continue;
 	} else if ( strpos($arg, '-') === 0 ) {
-		Pss::addOption(substr(trim($arg, '-'), 0, 1), substr(trim($arg, '-'), 1));
+		$index = 1;
+		while ( $word = substr($arg, $index++, 1) ) {
+			Pss::addOption($word, 1);
+		}
 		continue;
 	}
 	if ( ! $input ) {

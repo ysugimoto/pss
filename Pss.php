@@ -398,7 +398,7 @@ class Pss {
 		}
 		
 		list(, $control, $condition) = $match;
-		$class = PSS_CLASS_PREFIX . $control;
+		$class = PSS_CLASS_PREFIX . ucfirst($control) . '_Control';
 		return new $class(trim($condition));
 	}
 	
@@ -424,7 +424,7 @@ class Pss {
 		}
 		
 		list(, $plugin, $name) = $match;
-		$class = PSS_CLASS_PREFIX . $plugin;
+		$class = PSS_CLASS_PREFIX . ucfirst($plugin);
 		if ( class_exists($class) ) {
 			// split parameter if exists
 			list($name, $param) = ( preg_match('/(.+)\((.+)\)/', trim($name), $matches) )
@@ -455,7 +455,7 @@ class Pss {
 			$value = $this->parseGlobalLine(trim($match[2], '"\''));
 			
 			// Variable word validation
-			if ( ! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]+$/', trim($match[1])) ) {
+			if ( ! preg_match('/^[a-zA-Z_]([a-zA-Z0-9_]+)?$/', trim($match[1])) ) {
 				throw new RuntimeException(
 					'Invalid variable format: "' . trim($match[1]) . '" on '
 					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
@@ -532,7 +532,6 @@ class Pss {
 		// Else, returns argument value.
 		return $section;
 	}
-	
 	
 	
 	// ---------------------------------------------------------------

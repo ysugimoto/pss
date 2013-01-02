@@ -4,7 +4,7 @@
  * 
  * PSS: PHP-CSS preprocessor 
  * 
- * For-loop processing
+ * For-loop control
  * 
  * @package  PSS
  * @author   Yoshiaki Sugimoto <neo.yoshiaki.sugimoto@gmail.com>
@@ -13,7 +13,7 @@
  * ====================================================================
  */
  
-class Pss_For extends Pss_Control {
+class Pss_For_Control extends Pss_Control {
 	
 	/**
 	 * For condition sets
@@ -38,7 +38,7 @@ class Pss_For extends Pss_Control {
 	public function __construct($condition) {
 		
 		list($local, $var) = explode(' in ', trim($condition));
-		$this->loop = new ForParams($local, $var);
+		$this->loop = new For_Params($local, $var);
 	}
 	
 	
@@ -134,30 +134,5 @@ class Pss_For extends Pss_Control {
 			default:
 				return '';
 		}
-	}
-}
-
-/**
- * For loopset paramters class
- */
-class ForParams {
-	
-	public $local;
-	public $var;
-	
-	public function __construct($local, $var) {
-		
-		$this->local = trim($local, '$');
-		
-		// parse steps
-		$exp = explode(' at ', $var);
-		
-		// If times variable is initial value, create Variable object
-		if ( substr(trim($exp[0]), 0, 1) === '$' ) {
-			$this->var = trim($exp[0], '$');
-		} else {
-			$this->var = new Pss_Variable(trim($exp[0]));
-		}
-		$this->step     = ( isset($exp[1]) ) ? $exp[1] : 1;
 	}
 }

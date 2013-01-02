@@ -1,0 +1,59 @@
+@-webkit-key-frames {
+
+}
+
+$test_var: this is test;
+@include ./partial.pss;
+
+/*
+.comment_section {
+    width: 300px;
+}
+*/
+;
+$sample: 10px;
+$index: shadow;
+$ary: [1, 2, 3, 4, 4, 5, '100px'];
+$ppp: `date Y-m-d H:i:s`;
+
+@for ($i in 20px at 2):
+.loop {
+    width: $i;
+    height: $test_var;
+}
+@endfor;
+
+p {
+    a {
+        display: block;
+    }
+    &:hover {
+        background-color: rgb(0,0, 0);
+    }
+}
+
+
+@mixin sample($rad = 10px){
+  -webkit-border-radius: $rad;
+  -moz-border-radius: $rad;
+}
+
+section {
+    @mixin sample;
+    height: $ppp;
+    width: 300px;
+}
+
+
+header {
+    width: @calc(100px * .5);
+    @prefix border-radius(5px);
+}
+
+footer {
+    @mixin sample(5px);
+}
+
+article {
+    @extend section;
+}

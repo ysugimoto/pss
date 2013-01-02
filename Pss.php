@@ -458,15 +458,49 @@ class Pss {
 		// Variable definition format like: "$variable: some-data" or "$variable= some-data"  
 		if ( preg_match('/^\$([^:=]+)[:|=]\s?(.+)$/', $section, $match) ) {
 			$value = $this->parseGlobalLine(trim($match[2], '"\''));
+			$name  = trim($match[1]);
 			
 			// Variable word validation
-			if ( ! preg_match('/^[a-zA-Z_]([a-zA-Z0-9_]+)?$/', trim($match[1])) ) {
+			if ( ! preg_match('/^[a-zA-Z_]([a-zA-Z0-9_\.\[\]]+)?$/', $name) ) {
 				throw new RuntimeException(
-					'Invalid variable format: "' . trim($match[1]) . '" on '
+					'Invalid variable format: "' . $name . '" on '
 					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
 				);
 			}
-			self::$vars[trim($match[1])] = new Pss_Variable($value);
+			
+			// Adding array
+			if ( preg_match('/(.+?)\[([0-9]+)?\]$/', $name, $match) ) {
+				if ( ! isset(self::$vars[$match[1]]) ) {
+					throw new RuntimeException(
+						'Undefined variable: "$' . trim($match[1]) . '" on '
+						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+					);
+				} else {
+					$index = ( isset($match[2]) ) ? $match[2] : FALSE;
+					self::$vars[$match[1]]->addArray($index, $value);
+				}
+			}
+			
+			/* Sorry, not implement...
+			// Adding hash
+			else if ( preg_match('/(.+?)\.(.+)$/', $name, $match) ) {
+				var_dump($match);
+				var_dump(self::$vars);
+				if ( ! isset(self::$vars[$match[1]]) ) {
+					throw new RuntimeException(
+						'Undefined variable: "$' . trim($match[1]) . '" on '
+						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+					);
+				} else {
+					self::$vars[$match[1]]->addHash($match[2], $value);
+				}
+			}
+			*/
+			
+			// declare variable
+			else {
+				self::$vars[$name] = new Pss_Variable($value);
+			}
 			return;
 		}
 		

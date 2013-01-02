@@ -68,6 +68,48 @@ class Pss_Variable {
 	
 	
 	/**
+	 * Get value type
+	 * 
+	 * @access public
+	 * @return string
+	 */
+	public function getType() {
+		
+		return gettype($this->value);
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Add array value
+	 * 
+	 * @access public
+	 * @param  mixed index
+	 * @param  mixed value
+	 */
+	public function addArray($index, $value) {
+		
+		if ( ! is_array($this->value) ) {
+			throw new RuntimeException(
+				'Variable "$' . trim($match[1]) . '" is not an array on '
+				. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+			);	
+		}
+		
+		if ( $index !== FALSE ) {
+			$this->value[$index] = $value;
+		} else {
+			$this->valie[] = $value;
+		}
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
 	 * Variable detection and parse
 	 * 
 	 * @access protected
@@ -96,11 +138,13 @@ class Pss_Variable {
 			}, explode(',', $value));
 		}
 		
+		/* Sorry, not implement...
 		// hash
 		else if ( $value[0] === '{' ) {
 			$value = preg_replace('/\{(.+)\}/', '$1', $value);
 			$exp   = explode(',', $value);
 			$o     = new stdClass;
+			var_dump($exp);
 			foreach ( $exp as $v ) {
 				if ( strpos($v, ':') === FALSE ) {
 					throw new RuntimeException(
@@ -113,6 +157,7 @@ class Pss_Variable {
 			}
 			return $o;
 		}
+		*/
 		
 		// int or string
 		else {

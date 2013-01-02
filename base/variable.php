@@ -78,6 +78,16 @@ class Pss_Variable {
 		
 		$value = trim($value, '\'"');
 		
+		if ( $value === '' ) {
+			return '';
+		} else if ( $value === 'true' ) {
+			return TRUE;
+		} else if ( $value === 'false' ) {
+			return false;
+		} else if ( $value === 'null' ) {
+			return null;
+		}
+		
 		// array
 		if ( $value[0] === '[' ) {
 			$value = preg_replace('/\[(.+)\]/', '$1', $value);

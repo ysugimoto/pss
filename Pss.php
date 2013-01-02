@@ -264,6 +264,12 @@ class Pss {
 	 */
 	protected function process($css, $file = '') {
 		
+		$css = str_replace(
+			array("\r\n", "\r", "\t"),
+			array("\n",   "\n", '  '),
+			$css
+		);
+		
 		self::$originalSize += strlen($css);
 		
 		$this->file = $file;
@@ -303,7 +309,6 @@ class Pss {
 					if ( $this->currentBlock instanceof Pss_Control ) {
 						$this->currentBlock->addContents($section . $char);
 					} else {
-						//echo 'section/selector:' . $section . PHP_EOL;
 						$section = trim($section);
 						if ( $section{0} === '@' ) {
 							if ( FALSE !== ($proc = $this->_factoryProcessor($section)) ) {
@@ -450,8 +455,8 @@ class Pss {
 	 */
 	public function parseGlobalLine($section) {
 		
-		// Variable definition format like: "$variable: some-data" 
-		if ( preg_match('/^\$([^:]+):\s?(.+)$/', $section, $match) ) {
+		// Variable definition format like: "$variable: some-data" or "$variable= some-data"  
+		if ( preg_match('/^\$([^:=]+)[:|=]\s?(.+)$/', $section, $match) ) {
 			$value = $this->parseGlobalLine(trim($match[2], '"\''));
 			
 			// Variable word validation
@@ -467,7 +472,7 @@ class Pss {
 		
 		// ------------------------------------------
 		
-		// Use variable data format like: "width: $width"
+		// Use variable data format like: "width: $width" or "width: <$data>" on inline
 		else if ( preg_match('/<?\$([^\s>]+)>?/', $section, $match) ) {
 			
 			// If parsing section is plugin's inner,
@@ -552,7 +557,7 @@ class Pss {
 		// Convert tab to spcace 2
 		$css = preg_replace('/^\t/m', '  ', $css);
 		
-		// Arragnge indent
+		// Arrange indent
 		$css = preg_replace('/^\s{3,}/m', '  ', $css);
 		
 		if ( ! is_null(self::getOption('m')) ) {

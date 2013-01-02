@@ -315,7 +315,7 @@ $v: 10;
     @break;
   @default:
     @break;
-}
+@endswitch;
 ```
 
 上記の場合、2番目のcase文が実行されます。

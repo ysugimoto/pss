@@ -13,20 +13,13 @@
  * ====================================================================
  */
 
-class If_Block {
+class If_Block extends Pss_Block {
 	
 	/**
 	 * Parsed conditions
 	 * @var array
 	 */
 	protected $conditions = array();
-	
-	
-	/**
-	 * Current block contents
-	 * @var string
-	 */
-	protected $block = '';
 	
 	
 	// ---------------------------------------------------------------
@@ -58,36 +51,6 @@ class If_Block {
 				$this->conditions[] = new If_Condition($cond);
 			}
 		}
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Add block contents
-	 * 
-	 * @access public
-	 * @param  string $block
-	 */
-	public function addBlock($block) {
-		
-		$this->block .= $block;
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Get block contents
-	 * 
-	 * @access public
-	 * @return string
-	 */
-	public function getBlock() {
-		
-		return $this->block;
 	}
 	
 	

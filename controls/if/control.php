@@ -50,7 +50,7 @@ class Pss_If_Control extends Pss_Control {
 	 */
 	protected function _parseElses($contents) {
 		
-		$parsed = preg_split('/(@[^:]+?):/', $contents, -1, PREG_SPLIT_DELIM_CAPTURE);
+		$parsed = preg_split('/(@else[^:]*?):/', $contents, -1, PREG_SPLIT_DELIM_CAPTURE);
 		
 		// Get first block
 		$block  = reset($this->blocks);
@@ -62,7 +62,7 @@ class Pss_If_Control extends Pss_Control {
 			if ( substr($section, 0, 1) === '@' ) {
 				
 				// Elseif
-				if ( preg_match('/^@elseif\s?\(?(.+)\)?/', $section, $match) ) {
+				if ( preg_match('/^@else\s?if\s?\(?(.+)\)?/', $section, $match) ) {
 					$block = new If_Block();
 					$block->setCondition($match[1]);
 					$this->blocks[] = $block;
@@ -75,7 +75,7 @@ class Pss_If_Control extends Pss_Control {
 				// Other: syntax error
 				else {
 					throw new RuntimeException(
-						'Invalid if condition pattern exists on '
+						'Invalid if condition pattern or nested conrol exists on '
 						. Pss::getCurrentFile() . ' near line ' . (Pss::getCurrentLine() + 1)
 					);
 				}

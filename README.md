@@ -215,7 +215,59 @@ $value: 100px;
 
 ### if文
 
-現在未実装です。
+プログラミング言語によるif-elseif-elseの条件分岐を表現できます。現状、()でネストしないシンプルな条件式のみ評価できます。
+比較演算子は ** >、<、<=、>=、==、!=、===、!== ** が使えます。
+論理演算子は **&&またはand、||またはor** が使えます。できるだけ条件式は一行にまとめて下さい。
+
+#### ifのみの例
+
+```
+$int: 10;
+
+@if ( $int == 10 ):
+.selector {
+  width: 100px;
+}
+@endif;
+```
+
+#### if-elseの例
+
+```
+$int: 10;
+
+@if ( $int > 10 ):
+.selector {
+  width: 100px;
+}
+@else:
+.selector {
+  width: 50px;
+}
+@endif;
+```
+
+#### if-elseif-elseの例
+
+```
+$int: 10;
+
+@if ( $int > 10 ):
+.selector {
+  width: 100px;
+}
+@elseif ( $int == 10 ):
+.selector {
+  width: 150px;
+}
+@else:
+.selector {
+  width: 50px;
+}
+@endif;
+```
+
+今後はインラインセクションの評価結果を条件評価に使えるようにしようかと思っています。
 
 
 ## PHP組み込み関数の利用
@@ -253,7 +305,7 @@ $value: 100px;
 ```
 /*　定義セクション */
 @mixin sample($def = 5px) {
-  border: solid $def #000000;
+  border: solid <$def> #000000;
 }
 
 ... 

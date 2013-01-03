@@ -23,13 +23,6 @@ class Pss {
 	
 	
 	/**
-	 * Process selectors
-	 * @var array
-	 */
-	public static $selectors  = array();
-	
-	
-	/**
 	 * Current processing directory
 	 * @var string
 	 */
@@ -77,6 +70,8 @@ class Pss {
 	 */
 	protected $currentBlock;
 	
+	public $treatLocalVar = FALSE;
+	
 	
 	/**
 	 * Process list
@@ -84,6 +79,26 @@ class Pss {
 	 */
 	protected static $processes = array();
 	
+	
+	/**
+	 * Process selectors
+	 * @var array
+	 */
+	protected static $selectors  = array();
+	
+	
+	public static function flushVariable() {
+		
+		$vars = array();
+		foreach ( self::$vars as $name => $var ) {
+			
+			if ( $var->isFlush === FALSE ) {
+				$vars[$name] = $var;
+			}
+		}
+		
+		self::$vars = $vars;
+	}
 	
 	/**
 	 * Add command line option
@@ -162,6 +177,17 @@ class Pss {
 	}
 	
 	
+	public static function addSelector(Pss_Selector $selector) {
+		
+		self::$selectors[] = $selector;
+	}
+	
+	public static function getSelectors() {
+		
+		return self::$selectors;
+	}
+	
+	
 	// ---------------------------------------------------------------
 	
 	
@@ -223,7 +249,7 @@ class Pss {
 	 */
 	public function __construct() {
 		
-		self::$processes[] = $this;
+		self::$processes[]  = $this;
 	}
 	
 	
@@ -236,19 +262,15 @@ class Pss {
 	 * @access public static
 	 * @param  string $css
 	 */
-	public static function compilePiece($css) {
-		
-		// to strict format
-		$css = str_replace(
-			array("\r\n", "\r", "\t"),
-			array("\n",   "\n", '  '),
-			$css
-		);
+	public static function compilePiece($css, $treatLocal = FALSE) {
 		
 		$pss = new static();
-		$pss->process($css, '');
+		$pss->treatLovalVar = $treatLocal;
+		$return = $pss->process($css, '');
 		
 		array_pop(self::$processes);
+		
+		return $return;
 	}
 	
 	
@@ -270,11 +292,10 @@ class Pss {
 			$css
 		);
 		
-		self::$originalSize += strlen($css);
-		
 		$this->file = $file;
 		$pointer    = 0;
 		$section    = '';
+		$return     = array();
 		
 		// Split comment
 		$css = preg_replace('/\/\*.+?\*\//ms', '', $css);
@@ -287,18 +308,25 @@ class Pss {
 				// Case end of line
 				case ';':
 					if ( $this->currentBlock instanceof Pss_Control ) {
-						if ( preg_match('/^@end(.+);?$/', $section, $syntax) ) {
+						
+						if ( preg_match('/^@end(.+);?$/', trim($section), $syntax) ) {
 							$this->currentBlock->execute();
 							$this->currentBlock = null;
 						} else {
 							$this->currentBlock->addContents($section . $char);
 						}
+					} else if ( $this->currentBlock instanceof Pss_Plugin ) {
+						$this->currentBlock->addProperty($section);
 					} else {
 						$result = $this->parseGlobalLine(trim($section));
 						if ( $result instanceof Pss_Selector ) {
-							self::$selectors[] = $result;
-						} else if ( is_string($result) && $this->currentBlock instanceof Pss_Selector ) {
-							$this->currentBlock->addProperty($result);
+							self::addSelector($result);
+						} else if ( is_string($result) ) {
+							if ( $this->currentBlock instanceof Pss_Selector ) {
+								$this->currentBlock->addProperty($result);
+							} else {
+								$return[] = $result;
+							}
 						}
 					}
 					$section = '';
@@ -315,15 +343,15 @@ class Pss {
 								$this->currentBlock = $proc;
 							} else {
 								$this->currentBlock = new Pss_Selector($section);
-								self::$selectors[] = $this->currentBlock;
+								self::addSelector($this->currentBlock);
 							}
 						} else if ( $this->currentBlock instanceof Pss_Selector 
 						            && ! ($this->currentBlock instanceof Pss_Plugin) ) {
 							$this->currentBlock = new Pss_Selector($section, $this->currentBlock);
-							self::$selectors[] = $this->currentBlock;
+							self::addSelector($this->currentBlock);
 						} else {
 							$this->currentBlock = new Pss_Selector($section);
-							self::$selectors[] = $this->currentBlock;
+							self::addSelector($this->currentBlock);
 						}
 					}
 					$section = '';
@@ -333,6 +361,9 @@ class Pss {
 				case ':':
 					if ( $this->currentBlock instanceof Pss_Control ) {
 						$this->currentBlock->addContents($section . $char);
+						$section = '';
+					} else if ( $this->currentBlock instanceof Pss_Plugin ) {
+						$this->currentBlock->addProperty($section . $char);
 						$section = '';
 					} else {
 						if ( substr($css, $pointer + 1, 1) === "\n" && substr($section, 0, 1) === '@' ) {
@@ -380,6 +411,8 @@ class Pss {
 					break;
 			}
 		}
+
+		return $return;
 	}
 	
 	
@@ -449,7 +482,7 @@ class Pss {
 	/**
 	 * Execute parsing line
 	 * 
-	 * @access public
+	 * @access public static
 	 * @param  string $section
 	 * @return mixed
 	 */
@@ -473,6 +506,11 @@ class Pss {
 				if ( ! isset(self::$vars[$match[1]]) ) {
 					throw new RuntimeException(
 						'Undefined variable: "$' . trim($match[1]) . '" on '
+						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+					);
+				} else if ( self::$vars[$match[1]]->isImmutable() ) {
+					throw new RuntimeException(
+						'Variable: "$' . trim($match[1]) . '" is immutable! '
 						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
 					);
 				} else {
@@ -499,7 +537,14 @@ class Pss {
 			
 			// declare variable
 			else {
-				self::$vars[$name] = new Pss_Variable($value);
+				if ( isset(self::$vars[$name]) && self::$vars[$name]->isImmutable() ) {
+					throw new RuntimeException(
+						'Variable: "$' . trim($name) . '" is immutable! '
+						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+					);
+				}
+				$immutable = ( preg_match('/^[_A-Z]+$/', $name) ) ? TRUE : FALSE;
+				self::$vars[$name] = new Pss_Variable($value, $immutable, $this->treatLocalVar);
 			}
 			return;
 		}
@@ -511,9 +556,9 @@ class Pss {
 			
 			// If parsing section is plugin's inner,
 			// parse variable lazy
-			if ( $this->currentBlock instanceof Pss_Plugin ) {
-				return $section;
-			}
+			//if ( $this->currentBlock instanceof Pss_Plugin ) {
+			//	return $section;
+			//}
 			if ( ! isset(self::$vars[$match[1]]) ) {
 				throw new RuntimeException(
 					'Undefined variable: $' . $match[1] . ' on '
@@ -535,18 +580,27 @@ class Pss {
 				            ? array($matches[1], Pss_Plugin::parseExecArguments(trim($matches[2])))
 				            : array(trim($name), array());
 				
-				return call_user_func_array(array($class, 'execute'), $params);
+				return str_replace(
+					$match[0],
+					call_user_func_array(array($class, 'execute'), $params),
+					$section
+				);
 			}
 		}
 		
 		// ------------------------------------------
 		
 		// Execute inline plugin format like: "@base64(./image.png)"
-		else if ( preg_match('/@([^\(]+)\(([^\)]+)\)/', $section, $match) ) {
+		else if ( preg_match('/@([^\(]+)\(([^\)]+)?\)/', $section, $match) ) {
 			$class  = PSS_CLASS_PREFIX . ucfirst($match[1]);
-			$result = call_user_func(array($class, 'inline'), trim($match[2]));
-			
-			return str_replace($match[0], $result, $section);
+			$params = ( isset($match[2]) )
+				        ? Pss_Plugin::parseExecArguments(trim($match[2]))
+				        : array();
+			if ( class_exists($class) ) {
+				$result = call_user_func_array(array($class, 'inline'), $params);
+				
+				return str_replace($match[0], $result, $section);
+			}
 		}
 		
 		// ------------------------------------------

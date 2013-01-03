@@ -27,7 +27,7 @@ class Pss_Extend extends Pss_Plugin {
 	public static function execute($name, $param) {
 		
 		$properties = array();
-		foreach ( Pss::$selectors as $selector) {
+		foreach ( Pss::getSelectors() as $selector) {
 			
 			if ( $selector->getSelector() === $name ) {
 				$properties = $selector->getProperty();

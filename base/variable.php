@@ -22,15 +22,46 @@ class Pss_Variable {
 	protected $value;
 	
 	
+	/**
+	 * Immutable variable fragment
+	 * @var bool
+	 */
+	protected $immutable = FALSE;
+	
+	
+	/**
+	 * Onetime flushing variable fragment
+	 * @var bool
+	 */
+	public $isFlush  = FALSE;
+	
+	
 	// ---------------------------------------------------------------
 	
 	
 	/**
 	 * Constructor
 	 */
-	public function __construct($value) {
+	public function __construct($value, $isImmutable = FALSE, $isFlush = FALSE) {
 		
-		$this->value = $this->_detect(trim($value));
+		$this->immutable = $isImmutable;
+		$this->flushVar  = $isFlush;
+		$this->value     = $this->_detect(trim($value));
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Check variable is immutable
+	 * 
+	 * @access public
+	 * @return bool
+	 */
+	public function isImmutable() {
+		
+		return $this->immutable;
 	}
 	
 	

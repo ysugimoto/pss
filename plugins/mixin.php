@@ -63,6 +63,12 @@ class Pss_Mixin extends Pss_Plugin {
 		            ? array_filter($param)
 		            : array();
 		
+		if ( self::isBlockSectionExists($css) ) {
+			throw new RuntimeException(
+				'Syntax error: "{...}" section cannot contains on difnition section!'
+			);
+		}
+		
 		foreach ( $args as $index => $arg ) {
 			
 			$value = ( isset($params[$index]) ) ? $params[$index] : $arg->value;
@@ -70,37 +76,7 @@ class Pss_Mixin extends Pss_Plugin {
 				$css[$index] = str_replace($arg->name, $value, $prop);
 			}
 		}
-		
-		return implode(";\n  ", $css);
-	}
-	
-	
-	// ---------------------------------------------------------------
-	
-	
-	/**
-	 * Parse arguments
-	 * 
-	 * @access protected static
-	 * @param  string param
-	 * @return array
-	 */
-	protected static function parseArgs($param) {
-		
-		if ( empty($param) ) {
-			return array();
-		}
-		
-		$args = array();
-		foreach ( array_filter(explode(',', $param)) as $arg ) {
-			
-			list($name, $default) = ( strpos($arg, '=') !== FALSE )
-			                          ? explode('=', $arg, 2)
-			                          : array($arg, '');
-			
-			$args[] = new MixinParams($name, trim($default));
-		}
-		
-		return $args;
+		$props = Pss::compilePiece(implode(";\n  ", $css) . ';');
+		return implode(";\n  ", $props);
 	}
 }

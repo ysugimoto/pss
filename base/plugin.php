@@ -38,6 +38,19 @@ class Pss_Plugin extends Pss_Selector {
 	// ---------------------------------------------------------------
 	
 	
+	public function isBlockSectionExists($contents) {
+		
+		if ( is_array($contents) ) {
+			$contents = implode('', $contents);
+		}
+		
+		return ( preg_match('/\{|\}/m',$contents) ) ? TRUE : FALSE;
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
 	/**
 	 * Get parameters
 	 * 

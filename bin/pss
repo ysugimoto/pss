@@ -69,7 +69,7 @@ try {
 	$compiled = Pss::compile($input);
 } catch ( RuntimeException $e ) {
 	echo $e->getMessage() . PHP_EOL;
-	echo 'Proceccing: ' . $e->getFile() . ' at line ' . $e->getLine() . PHP_EOL;
+	echo 'Processing: ' . $e->getFile() . ' at line ' . $e->getLine() . PHP_EOL;
 	exit;
 }
 

@@ -177,11 +177,30 @@ class Pss {
 	}
 	
 	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Add selector instance
+	 * 
+	 * @access public static
+	 * @param  Pss_Selector $selector
+	 */
 	public static function addSelector(Pss_Selector $selector) {
 		
 		self::$selectors[] = $selector;
 	}
 	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Get added selectors
+	 * 
+	 * @access public static
+	 * @param  return array
+	 */
 	public static function getSelectors() {
 		
 		return self::$selectors;

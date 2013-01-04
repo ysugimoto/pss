@@ -604,7 +604,6 @@ class Pss {
 		
 		// Execute plugin format like: "@mixin sample(10px)"
 		else if ( preg_match('/@([^\s\(]+)\s(.+)/', $section, $match) ) {
-			var_dump($match);
 			list(, $plugin, $name) = $match;
 			$class  = PSS_CLASS_PREFIX . ucfirst($plugin);
 			if ( class_exists($class) ) {

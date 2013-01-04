@@ -118,7 +118,41 @@ $array[]: 10; # $arrayは[1, 2, 3, 4, 5, 10]になる
 
 **また、変数は定義した順に利用されます。変数の巻き上げは起こりませんので注意して下さい。**
 
+### セレクタのネスト
 
+Sassなどと同じくセレクタのネスト、及び親参照セレクタも実装しています。
+
+```
+.section {
+  width: 500px;
+  
+  p {
+    color: #FFFFFF;
+    
+    a {
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+/* コンパイル */
+.section {
+  width: 500px;
+}
+.section p {
+  color: #FFF;
+}
+.section p a {
+  text-decoration: none;
+}
+.section p a:hover {
+  text-decoration: underline;
+}
+```
 
 ### 拡張識別子（@ルール）
 

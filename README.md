@@ -380,6 +380,7 @@ $v: 10;
 * [extend（exec）](#extend)
 * [prefix（exec）](#prefix)
 * [include（exec/inline）](#include)
+* [alias（def）](#alias)
 * [base64（inline）](#base64)
 * [calc（inline）](#calc)
 
@@ -519,12 +520,43 @@ $v: 10;
 パスは、解析中のファイルパスからの相対パスとなります。
 
 ```
-@include ./partial.pss
+@include ./partial.pss;
 ```
 
 なお、メインのpssファイルで定義している変数を利用することもできますが、
 読み込みを行うよりも前に定義しておく必要があるので注意が必要です。
 一般的には、mixinのリストなどを分離してロードするような使い方が多いと思います。
+
+
+### <a name="alias">Alias
+
+定型フォーマットにラベルを付けてエイリアスを作成することができます。
+
+```
+@alias name:value;
+```
+
+valueの値には文字列のみが指定できます。変数の値は使えません。
+作成後、エイリアスの呼び出しは「&エイリアス名」、またはインラインで「<&エイリアス名>」で展開します。
+
+```
+@alias file:input[type=file];
+
+.selector &file {
+  display: block;
+}
+
+/* コンパイル */
+.selector input[type=file] {
+  display: block;
+}
+```
+
+変数とほぼ同じ機能ですが、変数は主にプロパティの値への用途を目的としていて、
+エイリアスは主にセレクタ部分の作成の簡易化を目的としています。
+（セレクタ部分の変数は展開されません。これは、CSS Selectors Level 4において、$を用いるセレクタが存在するからです）
+
+なお、エイリアスは単文のみで、複数行に渡る定義セクションなどには使えません。
 
 ### <a name="base64">Base64
 

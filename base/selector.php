@@ -61,7 +61,16 @@ class Pss_Selector {
 	 */
 	public function getSelector() {
 		
-		if ( strpos($this->selector, '&') !== FALSE ) {
+		if ( preg_match('/<?&([^:]{1}[0-9a-zA-Z_]+)>?/', $this->selector, $match) ) {
+			if ( ! isset(Pss::$aliases[$match[1]]) ) {
+				throw new RuntimeException(
+					'Undefined alias: &' . $match[1] . ' on '
+					. Pss::getCurrentFile() . ' at line ' . (Pss::getCurrentLine() + 1)
+				);
+			}
+			
+			$this->selector = str_replace($match[0], Pss::$aliases[$match[1]]->getValue(), $this->selector);
+		} else if ( strpos($this->selector, '&') !== FALSE ) {
 			if ( ! $this->parentSelector ) {
 				throw new RuntimeException(
 					'parent selector is not defined on '

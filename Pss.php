@@ -22,6 +22,9 @@ class Pss {
 	public static $vars = array();
 	
 	
+	public static $aliases = array();
+	
+	
 	/**
 	 * Current processing directory
 	 * @var string
@@ -271,6 +274,11 @@ class Pss {
 		self::$processes[]  = $this;
 	}
 	
+	public static function getCurrentInstance() {
+		
+		return end(self::$processes);
+	}
+	
 	
 	// ---------------------------------------------------------------
 	
@@ -337,7 +345,7 @@ class Pss {
 					} else if ( $this->currentBlock instanceof Pss_Plugin ) {
 						$this->currentBlock->addProperty($section);
 					} else {
-						$result = $this->parseGlobalLine(trim($section));
+						$result = self::parseGlobalLine(trim($section));
 						if ( $result instanceof Pss_Selector ) {
 							self::addSelector($result);
 						} else if ( is_string($result) ) {
@@ -505,11 +513,11 @@ class Pss {
 	 * @param  string $section
 	 * @return mixed
 	 */
-	public function parseGlobalLine($section) {
+	public static function parseGlobalLine($section) {
 		
 		// Variable definition format like: "$variable: some-data" or "$variable= some-data"  
 		if ( preg_match('/^\$([^:=]+)[:|=]\s?(.+)$/', $section, $match) ) {
-			$value = $this->parseGlobalLine(trim($match[2], '"\''));
+			$value = self::parseGlobalLine(trim($match[2], '"\''));
 			$name  = trim($match[1]);
 			
 			// Variable word validation
@@ -563,7 +571,10 @@ class Pss {
 					);
 				}
 				$immutable = ( preg_match('/^[_A-Z]+$/', $name) ) ? TRUE : FALSE;
-				self::$vars[$name] = new Pss_Variable($value, $immutable, $this->treatLocalVar);
+				self::$vars[$name] = new Pss_Variable($value,
+										$immutable,
+										self::getCurrentInstance()->treatLocalVar
+									);
 			}
 			return;
 		}
@@ -616,9 +627,11 @@ class Pss {
 				        ? Pss_Plugin::parseExecArguments(trim($match[2]))
 				        : array();
 			if ( class_exists($class) ) {
-				$result = call_user_func_array(array($class, 'inline'), $params);
-				
-				return str_replace($match[0], $result, $section);
+				return str_replace(
+								$match[0],
+								call_user_func_array(array($class, 'inline'), $params),
+								$section
+							);
 			}
 		}
 		
@@ -639,6 +652,19 @@ class Pss {
 			return str_replace($match[0], call_user_func_array($function, $arguments), $section);
 		}
 		
+		// ------------------------------------------
+		
+		// Replace alias
+		else if ( preg_match('/<?&([^\s>]+)>?/', $section, $match) ) {
+			if ( ! isset(self::$aliases[$match[1]]) ) {
+				throw new RuntimeException(
+					'Undefined alias: &' . $match[1] . ' on '
+					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+				);
+			}
+			
+			return str_replace($match[0], self::$aliases[$match[1]]->getValue(), $section);
+		}
 		// ------------------------------------------
 		
 		// Else, returns argument value.

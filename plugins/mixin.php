@@ -76,7 +76,11 @@ class Pss_Mixin extends Pss_Plugin {
 				$css[$index] = str_replace($arg->name, $value, $prop);
 			}
 		}
-		$props = Pss::compilePiece(implode(";\n  ", $css) . ';');
+		$mixins = Pss::compilePiece(implode(";\n  ", $css) . ';');
+		$props  = array();
+		for ( $index = 0; $index < count($mixins); $index += 2 ) {
+			$props[] = $mixins[$index] . ' ' . $mixins[$index + 1];
+		}
 		return implode(";\n  ", $props);
 	}
 }

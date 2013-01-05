@@ -42,7 +42,7 @@ class Pss_Switch_Control extends Pss_Control {
 			if ( ! isset(Pss::$vars[$match[1]]) ) {
 				throw new RuntimeException(
 					'Undefined variable: $' . $match[1] . ' on '
-					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
+					. Pss::getCurrentFile() . ' at line ' . (Pss::getCurrentLine() + 1)
 				);
 			}
 			$this->evaluateValue = Pss::$vars[$match[1]];

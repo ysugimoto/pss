@@ -547,6 +547,7 @@ class Pss {
 		
 		// Variable definition format like: "$variable: some-data" or "$variable= some-data"  
 		if ( preg_match('/^\$([^:=]+)[:|=]\s?(.+)$/', $section, $match) ) {
+			
 			$value = self::parseGlobalLine(trim($match[2], '"\''));
 			$name  = trim($match[1]);
 			
@@ -608,12 +609,11 @@ class Pss {
 			}
 			return;
 		}
-		
+
 		// ------------------------------------------
 		
 		// Use variable data format like: "width: $width" or "width: <$data>" on inline
 		else if ( preg_match('/<?\$([^\s>]+)>?/', $section, $match) ) {
-			
 			// If parsing section is plugin's inner,
 			// parse variable lazy
 			//if ( $this->currentBlock instanceof Pss_Plugin ) {
@@ -626,8 +626,10 @@ class Pss {
 				);
 			}
 			
-			return str_replace($match[0], self::$vars[$match[1]]->getValue(), $section);
+			$section = str_replace($match[0], self::$vars[$match[1]]->getValue(), $section);
+			return self::parseGlobalLine($section);
 		}
+		
 		
 		// ------------------------------------------
 		
@@ -741,8 +743,8 @@ class Pss {
 		$sed  = array('', '  ');
 		
 		if ( ! is_null(self::getOption('m')) ) {
-			array_push($grep, '/\n(\s+)?/m', '/:\s/m', '/\s{2}/m');
-			array_push($sed,  '',':', ' ');
+			array_push($grep, '/\n(\s+)?/m', '/:\s/m', '/\s{2}/m', '/\s{/m');
+			array_push($sed,  '',':', ' ', '{');
 		} else if ( ! is_null(self::getOption('l')) ) {
 			$grep[] = '/\}\n/m';
 			$sed[]  = "}\n\n";

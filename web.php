@@ -40,7 +40,7 @@ function get($key) {
 if ( server('request_method') === 'POST' ) {
 	$input  = post('pss');
 	if ( is_array(post('option')) ) {
-		foreach ( post('options') as $opt ) {
+		foreach ( post('option') as $opt ) {
 			Pss::addOption($opt, 1);
 		}
 	} else if ( is_string(post('option')) ) {
@@ -48,6 +48,12 @@ if ( server('request_method') === 'POST' ) {
 		while ( $word = substr(post('option'), $index++, 1) ) {
 			Pss::addOption($word, 1);
 		}
+	}
+	
+	if ( empty($input) ) {
+		header('HTTP/1.1 503 Internal Server Error');
+		echo 'PSS data is empty.';
+		exit;
 	}
 	
 	try {
@@ -84,7 +90,7 @@ if ( server('request_method') === 'POST' ) {
 	}
 }
 
-header('HTTP/1.1 OK');
+header('HTTP/1.1 200 OK');
 header('Content-Type: text/css');
 header('Content-Length: ' . strlen($compiled));
 echo $compiled;

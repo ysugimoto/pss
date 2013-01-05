@@ -37,9 +37,7 @@ class Pss_Alias extends Pss_Plugin {
 	 */
 	public static function execute($name, $param) {
 		
-		var_dump($name);
 		list($key, $value) = array_map('trim', explode(':', $name, 2));
-		
 		Pss::$aliases[$key] = new Pss_Variable($value);
 	}
 }

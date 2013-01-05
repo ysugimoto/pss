@@ -38,7 +38,14 @@ class Pss_Plugin extends Pss_Selector {
 	// ---------------------------------------------------------------
 	
 	
-	public function isBlockSectionExists($contents) {
+	/**
+	 * Check block section contains
+	 * 
+	 * @access public static
+	 * @param  string $contents
+	 * @return bool
+	 */
+	public static function isBlockSectionExists($contents) {
 		
 		if ( is_array($contents) ) {
 			$contents = implode('', $contents);

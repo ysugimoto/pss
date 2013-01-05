@@ -22,6 +22,10 @@ class Pss {
 	public static $vars = array();
 	
 	
+	/**
+	 * Process aliases
+	 * @var array
+	 */
 	public static $aliases = array();
 	
 	
@@ -29,7 +33,7 @@ class Pss {
 	 * Current processing directory
 	 * @var string
 	 */
-	public static $currentDir;
+	public static $currentDir = __DIR__;
 	
 	
 	/**
@@ -73,6 +77,11 @@ class Pss {
 	 */
 	protected $currentBlock;
 	
+	
+	/**
+	 * Treat local variable flag
+	 * @var bool
+	 */
 	public $treatLocalVar = FALSE;
 	
 	
@@ -90,6 +99,14 @@ class Pss {
 	protected static $selectors  = array();
 	
 	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Flush stack variable
+	 * 
+	 * @access public static
+	 */
 	public static function flushVariable() {
 		
 		$vars = array();
@@ -102,6 +119,10 @@ class Pss {
 		
 		self::$vars = $vars;
 	}
+	
+	
+	// ---------------------------------------------------------------
+	
 	
 	/**
 	 * Add command line option
@@ -217,46 +238,46 @@ class Pss {
 	 * Execute compile
 	 * 
 	 * @access public static
+	 * @param  sring $css
+	 * @return string
+	 */
+	public static function compile($css, $fileName = 'Data') {
+		
+		$pss = new static();
+		$pss->file = $fileName;
+		$pss->process($css);
+		
+		$output = $pss->format();
+		array_pop(self::$processes);
+		
+		return $output;
+	}
+	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Execute compile from file
+	 * 
+	 * @access public static
 	 * @param  sring $file
 	 * @return string
 	 */
-	public static function compile($file) {
+	public static function compileFile($file) {
 		
 		if ( ! file_exists($file) ) {
-			throw new RuntimeException('.pss file is nor exists.');
+			throw new RuntimeException('pss file is not exists.');
 		}
 		
 		self::$currentDir = dirname($file);
 		$css              = file_get_contents($file);
 		
 		$pss = new static();
-		$pss->process($css, $file);
+		$pss->file = $file;
+		$pss->process($css);
 		
-		$output = '';
-		$d      = is_null(self::getOption('d'));
-		$unique = array();
-		foreach ( self::$selectors as $selector ) {
-			
-			$s = $selector->getSelector();
-			if ( ! $d ) {
-				$unique[] = $selector;
-			} else {
-				if ( isset($unique[$s]) ) {
-					foreach ( $selector->getProperty() as $props ) {
-						$unique[$s]->addProperty($props);
-					}
-				} else {
-					$unique[$s] = $selector;
-				}
-			}
-		}
-		
-		foreach ( $unique as $selector ) {
-			self::$selectorCount++;
-			$output .= $selector->format() . "\n";
-		}
-		
-		$output = $pss->format($output);
+		$output = $pss->format();
 		array_pop(self::$processes);
 		
 		return $output;
@@ -274,6 +295,16 @@ class Pss {
 		self::$processes[]  = $this;
 	}
 	
+	
+	// ---------------------------------------------------------------
+	
+	
+	/**
+	 * Get current process instance
+	 * 
+	 * @access public static
+	 * @return Pss
+	 */
 	public static function getCurrentInstance() {
 		
 		return end(self::$processes);
@@ -293,7 +324,7 @@ class Pss {
 		
 		$pss = new static();
 		$pss->treatLovalVar = $treatLocal;
-		$return = $pss->process($css, '');
+		$return = $pss->process($css);
 		
 		array_pop(self::$processes);
 		
@@ -311,7 +342,7 @@ class Pss {
 	 * @param  string $file
 	 * @return string
 	 */
-	protected function process($css, $file = '') {
+	protected function process($css) {
 		
 		$css = str_replace(
 			array("\r\n", "\r", "\t"),
@@ -319,7 +350,6 @@ class Pss {
 			$css
 		);
 		
-		$this->file = $file;
 		$pointer    = 0;
 		$section    = '';
 		$return     = array();
@@ -395,7 +425,6 @@ class Pss {
 					} else {
 						if ( substr($css, $pointer + 1, 1) === "\n" && substr($section, 0, 1) === '@' ) {
 							
-							var_dump($section);
 							$this->currentBlock = $this->_factoryControlSyntax(trim($section));
 							$section = '';
 						} else {
@@ -427,7 +456,7 @@ class Pss {
 					}
 					$section = '';
 					break;
-
+				
 				// Case end of line
 				case "\n":
 					++$this->line;
@@ -677,33 +706,49 @@ class Pss {
 	
 	
 	/**
-	 * Format CSS strings
+	 * Make and format compiled CSS strings
 	 * 
 	 * @access protected
-	 * @param  string $css
 	 * @return string
 	 */
-	public function format($css) {
+	public function format() {
 		
-		// Remove empty line
-		$css = preg_replace('/^\n/m', '', $css);
+		$output = '';
+		$d      = is_null(self::getOption('d'));
+		$unique = array();
+		foreach ( self::$selectors as $selector ) {
+			
+			$s = $selector->getSelector();
+			if ( ! $d ) {
+				$unique[] = $selector;
+			} else {
+				if ( isset($unique[$s]) ) {
+					foreach ( $selector->getProperty() as $props ) {
+						$unique[$s]->addProperty($props);
+					}
+				} else {
+					$unique[$s] = $selector;
+				}
+			}
+		}
 		
-		// Convert tab to spcace 2
-		$css = preg_replace('/^\t/m', '  ', $css);
+		foreach ( $unique as $selector ) {
+			self::$selectorCount++;
+			$output .= $selector->format() . "\n";
+		}
 		
-		// Arrange indent
-		$css = preg_replace('/^\s{3,}/m', '  ', $css);
+		$grep = array('/^\n/m', '/^\t|^\s{3,}/m');
+		$sed  = array('', '  ');
 		
 		if ( ! is_null(self::getOption('m')) ) {
-			$css = preg_replace(
-				array('/\n(\s+)?/m', '/:\s/m', '/\s{2}/m'),
-				array('', ':', ' '),
-				$css
-			);
+			array_push($grep, '/\n(\s+)?/m', '/:\s/m', '/\s{2}/m');
+			array_push($sed,  '',':', ' ');
 		} else if ( ! is_null(self::getOption('l')) ) {
-			return preg_replace('/\}\n/m', "}\n\n", $css);
-		}
-		return $css. "\n";
+			$grep[] = '/\}\n/m';
+			$sed[]  = "}\n\n";
+		}		
+		
+		return preg_replace($grep, $sed, $output) . "\n";
 		
 	}
 }

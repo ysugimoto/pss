@@ -92,6 +92,14 @@ if ( server('request_method') === 'POST' ) {
 	}
 }
 
+if ( count(Pss_Dump::$dumps) > 0 ) {
+	$compiled .= '/* Pss Dump info ==========================' . "\n";
+	foreach ( Pss_Dump::$dumps as $label => $dump ) {
+		$compiled .= $label . ': ' . $dump . "\n";
+	}
+	$compiled .= '=========================== Pss_Dump info */' . "\n";
+}
+
 header('HTTP/1.1 200 OK');
 header('Content-Type: text/css');
 header('Content-Length: ' . strlen($compiled));

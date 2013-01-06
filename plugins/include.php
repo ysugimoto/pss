@@ -41,7 +41,7 @@ class Pss_Include extends Pss_Plugin {
 				. Pss::getCurrentFile() . ' at ' . ( Pss::getCurrentLine() + 1)
 			);
 		}
-		return Pss::compile((string)$path);
+		return Pss::compileFile((string)$path);
 	}
 	
 	// ---------------------------------------------------------------

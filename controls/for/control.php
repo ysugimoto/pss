@@ -56,7 +56,7 @@ class Pss_For_Control extends Pss_Control {
 			$var = $this->loop->var->getValue();
 		} else {
 			if ( ! isset(Pss::$vars[$this->loop->var]) ) {
-				throw new RuntimeException('Undefined variable: $' . $this->loo->var . '!');
+				throw new RuntimeException('Undefined variable: $' . $this->loop->var . '!');
 			}
 			$var = Pss::$vars[$this->loop->var]->getValue();
 		}

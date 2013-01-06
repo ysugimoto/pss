@@ -1,11 +1,16 @@
 # "PSS" : PHP-CSS-Preprocessor on console/web interface
 
-Last update : 2013/01/02
+Last update : 2013/01/06
 
 PHPベースのCSSプリプロセッサです。ループや関数の実行、
 Sassなどのmixin/extendなどの基本的な構文をサポートしています。
 
 コンソールからのコンパイル、またはWebインターフェースからの動的なCSSコンパイルが可能です。
+
+## デモ
+
+オンラインツールを作りました。以下からお試し頂けます。
+<http://pss.wnotes.net/>
 
 ## 特徴など
 

@@ -115,7 +115,7 @@ class Pss_Plugin extends Pss_Selector {
 		$args = array();
 		if ( ! empty($param) ) {
 			foreach ( array_filter(explode(',', $param)) as $arg ) {
-				$args[] = trim($arg, '\'"');
+				$args[] = trim(trim($arg), '\'"');
 			}
 		}
 		

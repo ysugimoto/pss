@@ -65,7 +65,7 @@ class Pss_Mixin extends Pss_Plugin {
 		
 		if ( self::isBlockSectionExists($css) ) {
 			throw new RuntimeException(
-				'Syntax error: "{...}" section cannot contains on difnition section!'
+				'Syntax error: "{...}" section cannot contains on definition section!'
 			);
 		}
 		

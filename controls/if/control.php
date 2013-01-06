@@ -74,10 +74,7 @@ class Pss_If_Control extends Pss_Control {
 				}
 				// Other: syntax error
 				else {
-					throw new RuntimeException(
-						'Invalid if condition pattern or nested conrol exists on '
-						. Pss::getCurrentFile() . ' near line ' . (Pss::getCurrentLine() + 1)
-					);
+					throw new PssSyntaxException();
 				}
 			} else {
 				// Add block section

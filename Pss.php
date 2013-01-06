@@ -445,6 +445,7 @@ class Pss {
 							               $this->currentBlock->getParams(),
 							               $this->currentBlock->getProperty()
 							);
+							$this->currentBlock = null;
 						}
 						else if ( $this->currentBlock instanceof Pss_Selector ) {
 							if ( $this->currentBlock->getParent() ) {
@@ -469,6 +470,10 @@ class Pss {
 			}
 		}
 
+		if ( $this->currentBlock ) {
+			throw new PssSyntaxException('{');
+		}
+
 		return $return;
 	}
 	
@@ -486,10 +491,7 @@ class Pss {
 	protected function _factoryControlSyntax($section) {
 		
 		if ( ! preg_match('/^@([^\s]+)\s?\(([^\)]+)\)$/', $section, $match) ) {
-			throw new RuntimeException(
-				'Syntax Error: illegal syntax format on '
-				. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-			);
+			throw new PssSyntaxException();
 		}
 		
 		list(, $control, $condition) = $match;
@@ -553,24 +555,15 @@ class Pss {
 			
 			// Variable word validation
 			if ( ! preg_match('/^[a-zA-Z_]([a-zA-Z0-9_\.\[\]]+)?$/', $name) ) {
-				throw new RuntimeException(
-					'Invalid variable format: "' . $name . '" on '
-					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-				);
+				throw new InvalidVariableException($name);
 			}
 			
 			// Adding array
 			if ( preg_match('/(.+?)\[([0-9]+)?\]$/', $name, $match) ) {
 				if ( ! isset(self::$vars[$match[1]]) ) {
-					throw new RuntimeException(
-						'Undefined variable: "$' . trim($match[1]) . '" on '
-						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-					);
+					throw new UndefinedVariableException($match[1]);
 				} else if ( self::$vars[$match[1]]->isImmutable() ) {
-					throw new RuntimeException(
-						'Variable: "$' . trim($match[1]) . '" is immutable! '
-						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-					);
+					throw new ImmutableVariableException($match[1]);
 				} else {
 					$index = ( isset($match[2]) ) ? $match[2] : FALSE;
 					self::$vars[$match[1]]->addArray($index, $value);
@@ -596,10 +589,7 @@ class Pss {
 			// declare variable
 			else {
 				if ( isset(self::$vars[$name]) && self::$vars[$name]->isImmutable() ) {
-					throw new RuntimeException(
-						'Variable: "$' . trim($name) . '" is immutable! '
-						. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-					);
+					throw new ImmutableVariableException($name);
 				}
 				$immutable = ( preg_match('/^[_A-Z]+$/', $name) ) ? TRUE : FALSE;
 				self::$vars[$name] = new Pss_Variable($value,
@@ -613,23 +603,34 @@ class Pss {
 		// ------------------------------------------
 		
 		// Use variable data format like: "width: $width" or "width: <$data>" on inline
-		else if ( preg_match('/<?\$([^\s>]+)>?/', $section, $match) ) {
+		else if ( preg_match('/<?\$([^\s>,]+)>?/', $section, $match) ) {
 			// If parsing section is plugin's inner,
 			// parse variable lazy
 			//if ( $this->currentBlock instanceof Pss_Plugin ) {
 			//	return $section;
 			//}
 			if ( ! isset(self::$vars[$match[1]]) ) {
-				throw new RuntimeException(
-					'Undefined variable: $' . $match[1] . ' on '
-					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-				);
+				throw new UndefinedVariableException($match[1]);
 			}
 			
 			$section = str_replace($match[0], self::$vars[$match[1]]->getValue(), $section);
 			return self::parseGlobalLine($section);
 		}
 		
+		// ------------------------------------------
+		
+		// Execute inline plugin format like: "@base64(./image.png)"
+		else if ( preg_match('/@([^\(\s]+)\(([^\)]+)?\)/', $section, $match) ) {
+			$class  = PSS_CLASS_PREFIX . ucfirst($match[1]);
+			$params = ( isset($match[2]) )
+				        ? Pss_Plugin::parseExecArguments(trim($match[2]))
+				        : array();
+			if ( ! class_exists($class) ) {
+				throw new UndefinedPluginException($match[1]);
+			}
+			$result = call_user_func_array(array($class, 'inline'), $params);
+			return str_replace($match[0], $result, $section);
+		}
 		
 		// ------------------------------------------
 		
@@ -652,23 +653,6 @@ class Pss {
 		
 		// ------------------------------------------
 		
-		// Execute inline plugin format like: "@base64(./image.png)"
-		else if ( preg_match('/@([^\(]+)\(([^\)]+)?\)/', $section, $match) ) {
-			$class  = PSS_CLASS_PREFIX . ucfirst($match[1]);
-			$params = ( isset($match[2]) )
-				        ? Pss_Plugin::parseExecArguments(trim($match[2]))
-				        : array();
-			if ( class_exists($class) ) {
-				return str_replace(
-								$match[0],
-								call_user_func_array(array($class, 'inline'), $params),
-								$section
-							);
-			}
-		}
-		
-		// ------------------------------------------
-		
 		// Execute internal PHP function format like: "`time`"
 		else if ( preg_match('/`(.+)`/', $section, $match) ) {
 			$exp       = explode(' ', $match[1], 2);
@@ -676,10 +660,7 @@ class Pss {
 			$arguments = array_map('trim', $exp);
 			
 			if ( ! function_exists($function) ) {
-				throw new RuntimeException(
-					'Called undefined function: ' . $function . ' on '
-					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-				);
+				throw new UndefinedPhpFunctionCallException($function);
 			}
 			return str_replace($match[0], call_user_func_array($function, $arguments), $section);
 		}
@@ -689,10 +670,7 @@ class Pss {
 		// Replace alias
 		else if ( preg_match('/<?&([^\s>]+)>?/', $section, $match) ) {
 			if ( ! isset(self::$aliases[$match[1]]) ) {
-				throw new RuntimeException(
-					'Undefined alias: &' . $match[1] . ' on '
-					. self::getCurrentFile() . ' at line ' . (self::getCurrentLine() + 1)
-				);
+				throw new UndefinedAliasException($match[1]);
 			}
 			
 			return str_replace($match[0], self::$aliases[$match[1]]->getValue(), $section);

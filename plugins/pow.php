@@ -4,7 +4,7 @@
  * 
  * PSS: PHP-CSS preprocessor 
  * 
- * Calculate values inline
+ * Math.pow calculation
  * 
  * @package  PSS
  * @author   Yoshiaki Sugimoto <neo.yoshiaki.sugimoto@gmail.com>
@@ -14,13 +14,13 @@
  * Call inline with calculate data taht you want like this:
  * 
  * .selector {
- *   width: @calc(100px * 10 - 500px);
+ *   width: @pow(100px, 2);
  * }
  * 
  * output is:
  * 
  * .selector {
- *   width: 500px;
+ *   width: 10000px;
  * }
  * 
  * Enable to use with preprocessor variable.
@@ -29,19 +29,26 @@
  * ====================================================================
  */
  
-class Pss_Calc extends Pss_Plugin {
+class Pss_Pow extends Pss_Plugin {
 	
 	/**
 	 * Callable inline
 	 * 
 	 * @access public static
-	 * @param  string
+	 * @param  string $base
+	 * @param  int $exp
 	 * @return string
 	 */
-	public static function inline($param) {
+	public static function inline($base, $exp) {
 		
-		$suffix = ( preg_match('/[pxemdg%]+/', $param) ) ? 'px' : '';
-		$fomura = trim(preg_replace('/[pxemdg%]+/', '', $param));
-		return BNF::calculate($fomura) . $suffix;
+		if ( func_num_args() !== 2 ) {
+			throw new RuntimeException(
+				'@pow arguments must be 2 on '
+				. Pss::getCurrentFile() . ' at line ' . (Pss::getCurrentLine() + 1)
+			);
+		}
+		$suffix = ( preg_match('/[pxemdg%]+/', $base) ) ? 'px' : '';
+		$fomura = trim(preg_replace('/[pxemdg%]+/', '', $base));
+		return pow((int)$fomura, (int)$exp) . $suffix;
 	}
 }

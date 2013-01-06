@@ -41,10 +41,7 @@ class If_Block extends Pss_Block {
 			
 			if ( $idx++ % 2 > 0 ) {
 				if ( ! preg_match('/&&|\|\||and|or/', $cond) ) {
-					throw new RuntimeException(
-						'Parse Error: Invaid condition format ' . implode(' ', $conditions) . ' on '
-						. Pss::getCurrentFile() . ' near line ' . (Pss::getCurrentLine() + 1)
-					);
+					throw new PssInvalidFormatException(implode(' ', $conditions));
 				}
 				$this->conditions[] = $cond;
 			} else {

@@ -30,16 +30,14 @@ class If_Condition {
 	 */
 	public function __construct($condition) {
 		
+		$condition = Pss::parseGlobalLine($condition);
 		// Split by Comparison operator
 		$this->condition = preg_split('/([===|!==|==|!=|<=|>=|<|>]{1,3})/', $condition, -1, PREG_SPLIT_DELIM_CAPTURE);
 		$this->condition = array_map('trim', $this->condition);
 		
 		// Validate condition
 		if ( count($this->condition) !== 3 && count($this->condition) !== 1 ) {
-			throw new RuntimeException(
-				'Parse Error: Invalid condition "' . $condition . ' on '
-				. Pss::getCurrentFile() . ' near line ' . (Pss::getCurrentLine() + 1)
-			);
+			throw new PssInvalidFormatException($conditon);
 		}
 	}
 	
@@ -109,10 +107,7 @@ class If_Condition {
 		if ( substr($value, 0, 1) === '$' ) {
 			$variable = substr($value, 1);
 			if ( ! isset(Pss::$vars[$variable]) ) {
-				throw new RuntimeException(
-					'Undefined variable: $' . $variable . ' on '
-					. Pss::getCurrentFile() . ' near line ' . (Pss::getCurrentLine() + 1)
-				);
+				throw new UndefinedVariableException($variable);
 			}
 			$value = Pss::$vars[$variable]->getValue();
 		}

@@ -37,7 +37,7 @@ class Pss_Switch_Control extends Pss_Control {
 	 */
 	public function __construct($condition) {
 		
-		$condition = trim($condition, '"\'');
+		$condition = Pss::parseGlobalLine(trim($condition, '"\''));
 		if ( preg_match('/^\$(.+)$/', $condition, $match) ) {
 			if ( ! isset(Pss::$vars[$match[1]]) ) {
 				throw new RuntimeException(
@@ -120,11 +120,7 @@ class Pss_Switch_Control extends Pss_Control {
 				
 				// Other: syntax error
 				else {
-					echo $section;
-					throw new RuntimeException(
-						'Invalid if condition pattern or nested conrol exists on '
-						. Pss::getCurrentFile() . ' near line ' . (Pss::getCurrentLine() + 1)
-					);
+					throw new PssSyntaxException();
 				}
 			} else if ( isset($block) ) {
 				// Add block section

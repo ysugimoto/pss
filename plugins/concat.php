@@ -4,44 +4,41 @@
  * 
  * PSS: PHP-CSS preprocessor 
  * 
- * Calculate values inline
+ * concat string
  * 
  * @package  PSS
  * @author   Yoshiaki Sugimoto <neo.yoshiaki.sugimoto@gmail.com>
  * @license  MIT Licence
  * 
  * @usage
- * Call inline with calculate data taht you want like this:
+ * Call inline with some concat data that you want like this:
  * 
  * .selector {
- *   width: @calc(100px * 10 - 500px);
+ *   width: @concat(100, px);
  * }
  * 
  * output is:
  * 
  * .selector {
- *   width: 500px;
+ *   width: 100px;
  * }
  * 
  * Enable to use with preprocessor variable.
- * Calculate result always "px" deigit sorry.
  * 
  * ====================================================================
  */
  
-class Pss_Calc extends Pss_Plugin {
+class Pss_Concat extends Pss_Plugin {
 	
 	/**
-	 * Callable inline
+	 * String concat inline
 	 * 
 	 * @access public static
-	 * @param  string
+	 * @param  string[, string...]
 	 * @return string
 	 */
 	public static function inline($param) {
 		
-		$suffix = ( preg_match('/[pxemdg%]+/', $param) ) ? 'px' : '';
-		$fomura = trim(preg_replace('/[pxemdg%]+/', '', $param));
-		return BNF::calculate($fomura) . $suffix;
+		return implode('', func_get_args());
 	}
 }

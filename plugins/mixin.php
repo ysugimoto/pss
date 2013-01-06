@@ -48,7 +48,7 @@ class Pss_Mixin extends Pss_Plugin {
 	 * 
 	 * @access public static
 	 * @param  string $name
-	 * @param  string $param
+	 * @param  array $param
 	 * @return string
 	 */
 	public static function execute($name, $param) {

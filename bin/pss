@@ -81,6 +81,15 @@ if ( ! $output ) {
 	file_put_contents($output, $compiled);
 	echo 'Compilation succeed!' . PHP_EOL;
 }
+
+if ( count(Pss_Dump::$dumps) > 0 ) {
+	echo '/* Pss Dump info ==========================' . PHP_EOL;
+	foreach ( Pss_Dump::$dumps as $label => $dump ) {
+		echo $label . ': ' . $dump . PHP_EOL;
+	}
+	echo '=========================== Pss_Dump info */' . PHP_EOL;
+
+}
 if ( ! is_null(Pss::getOption('v')) ) {
 	echo '/* ========================================' . PHP_EOL;
 	echo 'Compiled from: ' . $input . (( $output ) ? ' to ' . $output : '') . PHP_EOL;

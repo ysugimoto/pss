@@ -5,6 +5,8 @@ define('PSS_DIR', realpath(__DIR__ . '/'));
 define('PSS_CLASS_PREFIX', 'Pss_');
 define('PSS_VERSION', '0.8');
 
+require_once(PSS_DIR . '/Pss.php');
+
 // Register autoload plugin classes
 spl_autoload_register(function($name) {
 	
